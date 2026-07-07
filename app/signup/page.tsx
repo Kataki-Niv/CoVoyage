@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { FormField } from "@/components/shared/FormField";
 import { PageShell } from "@/components/shared/PageShell";
-import { ApiError, LoginResponse, apiRequest, storeAuth } from "@/lib/api";
+import { ApiError, apiRequest, loginUser, storeAuth } from "@/lib/api";
 
 const SIGNUP_SUCCESS_TOAST =
   "🎉 Welcome to CoVoyage! Your account has been created successfully.";
@@ -28,7 +28,9 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -57,13 +59,7 @@ export default function SignupPage() {
         }),
       });
 
-      const loginResponse = await apiRequest<LoginResponse>("/login", {
-        method: "POST",
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+      const loginResponse = await loginUser(formData);
 
       storeAuth(loginResponse);
       window.sessionStorage.setItem(TOAST_STORAGE_KEY, SIGNUP_SUCCESS_TOAST);

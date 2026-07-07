@@ -64,7 +64,7 @@ Discover compatible travelers using:
 - Travel Date Overlap
 - Preferred Trip Duration
 - Common Languages
-- AI Semantic Matching *(Coming Soon)*
+- AI Semantic Matching 
 
 ---
 
@@ -184,7 +184,7 @@ CoVoyage
 
 ---
 
-# 🚀 Getting Started
+#  Getting Started
 
 ### Frontend
 
@@ -207,7 +207,7 @@ uvicorn main:app --reload
 
 ---
 
-# 🎯 Vision
+#  Vision
 
 CoVoyage aims to become the world's intelligent social travel ecosystem.
 
@@ -217,7 +217,7 @@ Our long-term vision is to build an ecosystem where AI enhances every stage of t
 
 ---
 
-# ❤️ Built With
+#  Built With
 
 - Next.js
 - FastAPI
@@ -234,10 +234,7 @@ Our long-term vision is to build an ecosystem where AI enhances every stage of t
 
 ## 🚧 CoVoyage is currently under active development.
 
-New features, AI capabilities, and community experiences are continuously being added.
 
-⭐ If you like the project, consider giving it a star!
-
-Made with ❤️ by **Nivedana Kataki**
+Made by **Nivedana Kataki**
 
 </div>

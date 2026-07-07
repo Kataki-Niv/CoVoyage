@@ -17,20 +17,71 @@ export type LoginResponse = {
   user?: AuthUser;
 };
 
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
 export type AuthSessionResponse = {
   authenticated: boolean;
   user?: AuthUser;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function getApiErrorMessage(
+  detail: unknown,
+  fallback = "Request failed.",
+): string {
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => getApiErrorMessage(item, ""))
+      .filter(Boolean);
+
+    return messages.length ? messages.join(" ") : fallback;
+  }
+
+  if (isRecord(detail)) {
+    if ("detail" in detail) {
+      return getApiErrorMessage(detail.detail, fallback);
+    }
+
+    if (typeof detail.message === "string") {
+      return detail.message;
+    }
+
+    if (typeof detail.msg === "string") {
+      const location = Array.isArray(detail.loc)
+        ? detail.loc
+            .filter((part) => part !== "body")
+            .map(String)
+            .join(".")
+        : "";
+
+      return location ? `${location}: ${detail.msg}` : detail.msg;
+    }
+  }
+
+  return fallback;
+}
+
 export class ApiError extends Error {
   status: number;
   detail: string;
 
-  constructor(status: number, detail: string) {
-    super(detail);
+  constructor(status: number, detail: unknown) {
+    const message = getApiErrorMessage(detail);
+
+    super(message);
     this.name = "ApiError";
     this.status = status;
-    this.detail = detail;
+    this.detail = message;
   }
 }
 
@@ -83,6 +134,16 @@ export function storeAuth(loginResponse: LoginResponse) {
   }
 
   authChanged();
+}
+
+export function loginUser(credentials: LoginRequest) {
+  return apiRequest<LoginResponse>("/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email: credentials.email.trim(),
+      password: credentials.password,
+    }),
+  });
 }
 
 export function clearAuth() {
@@ -157,7 +218,7 @@ export async function apiRequest<T>(
 
     throw new ApiError(
       response.status,
-      data?.detail || data?.message || "Request failed.",
+      data?.detail ?? data?.message ?? data ?? "Request failed.",
     );
   }
 

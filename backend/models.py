@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Literal, Optional
 
 from pydantic import (
@@ -21,8 +21,18 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    email: str = Field(..., min_length=3, max_length=254)
+    password: str = Field(..., min_length=1)
+
+    @field_validator("email")
+    @classmethod
+    def validate_login_email(cls, email: str) -> str:
+        if "@" not in email or email.startswith("@") or email.endswith("@"):
+            raise ValueError("Enter the email address for this account")
+
+        return email
 
 
 class TravelProfile(BaseModel):
@@ -33,12 +43,15 @@ class TravelProfile(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     age: Optional[int] = Field(default=None, ge=18, le=120)
     gender: Optional[str] = Field(default=None, max_length=50)
+    preferred_travel_gender: str = Field(default="Anyone", max_length=50)
     bio: Optional[str] = Field(default=None, max_length=500)
     profile_picture_url: Optional[HttpUrl] = None
     travel_style: Optional[str] = Field(default=None, max_length=100)
     preferred_destinations: List[str] = Field(default_factory=list)
     budget_range: Optional[str] = Field(default=None, max_length=100)
     preferred_trip_duration: Optional[str] = Field(default=None, max_length=100)
+    available_from: Optional[date] = None
+    available_to: Optional[date] = None
     interests: List[str] = Field(default_factory=list)
     languages_spoken: List[str] = Field(default_factory=list)
     country: Optional[str] = Field(default=None, max_length=100)
@@ -48,6 +61,17 @@ class TravelProfile(BaseModel):
     instagram: Optional[HttpUrl] = None
     personal_website: Optional[HttpUrl] = None
 
+    @model_validator(mode="after")
+    def validate_available_dates(self):
+        if (
+            self.available_from is not None
+            and self.available_to is not None
+            and self.available_to < self.available_from
+        ):
+            raise ValueError("available_to cannot be before available_from")
+
+        return self
+
 
 class TravelProfileUpsert(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -56,12 +80,15 @@ class TravelProfileUpsert(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     age: Optional[int] = Field(default=None, ge=18, le=120)
     gender: Optional[str] = Field(default=None, max_length=50)
+    preferred_travel_gender: str = Field(default="Anyone", max_length=50)
     bio: Optional[str] = Field(default=None, max_length=500)
     profile_picture_url: Optional[HttpUrl] = None
     travel_style: Optional[str] = Field(default=None, max_length=100)
     preferred_destinations: List[str] = Field(default_factory=list)
     budget_range: Optional[str] = Field(default=None, max_length=100)
     preferred_trip_duration: Optional[str] = Field(default=None, max_length=100)
+    available_from: Optional[date] = None
+    available_to: Optional[date] = None
     interests: List[str] = Field(default_factory=list)
     languages_spoken: List[str] = Field(default_factory=list)
     country: Optional[str] = Field(default=None, max_length=100)
@@ -82,6 +109,17 @@ class TravelProfileUpsert(BaseModel):
             )
 
         return interests
+
+    @model_validator(mode="after")
+    def validate_available_dates(self):
+        if (
+            self.available_from is not None
+            and self.available_to is not None
+            and self.available_to < self.available_from
+        ):
+            raise ValueError("available_to cannot be before available_from")
+
+        return self
 
 
 class MatchBase(BaseModel):

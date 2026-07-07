@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { FormField } from "@/components/shared/FormField";
 import { PageShell } from "@/components/shared/PageShell";
-import { ApiError, LoginResponse, apiRequest, storeAuth } from "@/lib/api";
+import { ApiError, loginUser, storeAuth } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +20,9 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     setFormData((previous) => ({
       ...previous,
@@ -34,10 +36,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const loginResponse = await apiRequest<LoginResponse>("/login", {
-        method: "POST",
-        body: JSON.stringify(formData),
-      });
+      const loginResponse = await loginUser(formData);
 
       storeAuth(loginResponse);
       router.push("/profile");

@@ -22,12 +22,15 @@ type ProfileFormData = {
   username: string;
   age: string;
   gender: string;
+  preferred_travel_gender: string;
   bio: string;
   profile_picture_url: string;
   travel_style: string;
   preferred_destinations: string;
   budget_range: string;
   preferred_trip_duration: string;
+  available_from: string;
+  available_to: string;
   interests: string;
   languages_spoken: string;
   country: string;
@@ -48,10 +51,10 @@ type TravelProfile = Omit<
 > & {
   user_id?: string;
   age: number | null;
-  preferred_destinations: string[];
-  interests: string[];
-  languages_spoken: string[];
-  previously_visited_countries: string[];
+  preferred_destinations?: string[] | null;
+  interests?: string[] | null;
+  languages_spoken?: string[] | null;
+  previously_visited_countries?: string[] | null;
 };
 
 type ProfileResponse = {
@@ -63,6 +66,7 @@ type ProfileField = {
   label: string;
   name: keyof ProfileFormData;
   type?: string;
+  options?: string[];
 };
 
 const interestTagCategories = {
@@ -145,12 +149,15 @@ const emptyProfile: ProfileFormData = {
   username: "",
   age: "",
   gender: "",
+  preferred_travel_gender: "Anyone",
   bio: "",
   profile_picture_url: "",
   travel_style: "",
   preferred_destinations: "",
   budget_range: "",
   preferred_trip_duration: "",
+  available_from: "",
+  available_to: "",
   interests: "",
   languages_spoken: "",
   country: "",
@@ -173,6 +180,11 @@ const sections: {
       { label: "Username", name: "username" },
       { label: "Age", name: "age", type: "number" },
       { label: "Gender", name: "gender" },
+      {
+        label: "Preferred Gender to Travel With",
+        name: "preferred_travel_gender",
+        options: ["Anyone", "Female", "Male", "Non-binary"],
+      },
       { label: "Profile Picture URL", name: "profile_picture_url", type: "url" },
     ],
     textarea: { label: "Bio", name: "bio" },
@@ -212,6 +224,8 @@ const sections: {
       { label: "Preferred Destinations", name: "preferred_destinations" },
       { label: "Default Budget", name: "budget_range" },
       { label: "Preferred Trip Duration", name: "preferred_trip_duration" },
+      { label: "Available From", name: "available_from", type: "date" },
+      { label: "Available To", name: "available_to", type: "date" },
     ],
   },
 ];
@@ -249,24 +263,35 @@ function fallbackProfileData(): ProfileFormData {
   };
 }
 
+function listToFormText(values?: string[] | null) {
+  return Array.isArray(values) ? values.join(", ") : "";
+}
+
+function dateToFormValue(value?: string | null) {
+  return value ? value.slice(0, 10) : "";
+}
+
 function profileToForm(profile: TravelProfile): ProfileFormData {
   return {
     name: profile.name ?? "",
     username: profile.username ?? "",
     age: profile.age ? String(profile.age) : "",
     gender: profile.gender ?? "",
+    preferred_travel_gender: profile.preferred_travel_gender ?? "Anyone",
     bio: profile.bio ?? "",
     profile_picture_url: profile.profile_picture_url ?? "",
     travel_style: profile.travel_style ?? "",
-    preferred_destinations: profile.preferred_destinations.join(", "),
+    preferred_destinations: listToFormText(profile.preferred_destinations),
     budget_range: profile.budget_range ?? "",
     preferred_trip_duration: profile.preferred_trip_duration ?? "",
-    interests: profile.interests.join(", "),
-    languages_spoken: profile.languages_spoken.join(", "),
+    available_from: dateToFormValue(profile.available_from),
+    available_to: dateToFormValue(profile.available_to),
+    interests: listToFormText(profile.interests),
+    languages_spoken: listToFormText(profile.languages_spoken),
     country: profile.country ?? "",
     city: profile.city ?? "",
     previously_visited_countries:
-      profile.previously_visited_countries.join(", "),
+      listToFormText(profile.previously_visited_countries),
     linkedin: profile.linkedin ?? "",
     instagram: profile.instagram ?? "",
     personal_website: profile.personal_website ?? "",
@@ -290,12 +315,15 @@ function formToPayload(formData: ProfileFormData) {
     username: formData.username,
     age: formData.age ? Number(formData.age) : null,
     gender: toNullableString(formData.gender),
+    preferred_travel_gender: formData.preferred_travel_gender || "Anyone",
     bio: toNullableString(formData.bio),
     profile_picture_url: toNullableString(formData.profile_picture_url),
     travel_style: toNullableString(formData.travel_style),
     preferred_destinations: toList(formData.preferred_destinations),
     budget_range: toNullableString(formData.budget_range),
     preferred_trip_duration: toNullableString(formData.preferred_trip_duration),
+    available_from: toNullableString(formData.available_from),
+    available_to: toNullableString(formData.available_to),
     interests: toList(formData.interests),
     languages_spoken: toList(formData.languages_spoken),
     country: toNullableString(formData.country),
@@ -367,7 +395,9 @@ export default function ProfilePage() {
   }, [router, token]);
 
   const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     setFormData((previous) => ({
       ...previous,
@@ -488,6 +518,7 @@ export default function ProfilePage() {
                               : field.label
                           }
                           type={field.type}
+                          options={field.options}
                           value={formData[field.name]}
                           disabled={isSaving}
                           onChange={handleChange}

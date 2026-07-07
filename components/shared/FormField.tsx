@@ -7,13 +7,14 @@ type FormFieldProps = {
   name?: string;
   type?: string;
   placeholder?: string;
+  options?: string[];
   textarea?: boolean;
   className?: string;
   value?: string;
   disabled?: boolean;
   required?: boolean;
   onChange?: (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => void;
 };
 
@@ -22,6 +23,7 @@ export function FormField({
   name,
   type = "text",
   placeholder,
+  options,
   textarea = false,
   className,
   value,
@@ -46,6 +48,21 @@ export function FormField({
           required={required}
           onChange={onChange}
         />
+      ) : options ? (
+        <select
+          className={inputClass}
+          name={name}
+          value={value}
+          disabled={disabled}
+          required={required}
+          onChange={onChange}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       ) : (
         <input
           className={inputClass}

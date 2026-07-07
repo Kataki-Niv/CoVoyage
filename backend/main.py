@@ -12,6 +12,28 @@ from routers.trips import router as trips_router
 from vector_store import fetch_profile_vector, upsert_profile_vector
 
 
+PROFILE_RESPONSE_DEFAULTS = {
+    "preferred_destinations": [],
+    "interests": [],
+    "travel_style": None,
+    "budget_range": None,
+    "preferred_trip_duration": None,
+    "languages_spoken": [],
+    "bio": None,
+    "profile_picture_url": None,
+    "age": None,
+    "gender": None,
+    "preferred_travel_gender": "Anyone",
+    "country": None,
+    "city": None,
+    "previously_visited_countries": [],
+    "linkedin": None,
+    "instagram": None,
+    "personal_website": None,
+    "available_from": None,
+    "available_to": None,
+}
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +74,13 @@ def fetch_profile_vector_or_503(user_id: str):
 
 def serialize_profile(profile):
     profile.pop("_id", None)
+
+    for field_name, default_value in PROFILE_RESPONSE_DEFAULTS.items():
+        profile.setdefault(
+            field_name,
+            default_value.copy() if isinstance(default_value, list) else default_value,
+        )
+
     return profile
 
 
@@ -139,6 +168,32 @@ def get_profile(current_user=Depends(get_current_user)):
 
     return {
         "profile_created": True,
+        "profile": serialize_profile(profile),
+    }
+
+
+@app.get("/profiles/{profile_identifier}")
+def get_public_profile(
+    profile_identifier: str,
+    current_user=Depends(get_current_user),
+):
+    profiles = get_profiles_or_503()
+    profile = profiles.find_one(
+        {
+            "$or": [
+                {"user_id": profile_identifier},
+                {"username": profile_identifier},
+            ],
+        }
+    )
+
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Traveler profile not found",
+        )
+
+    return {
         "profile": serialize_profile(profile),
     }
 
