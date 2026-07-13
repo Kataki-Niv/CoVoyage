@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { FormField } from "@/components/shared/FormField";
 import { PageShell } from "@/components/shared/PageShell";
-import { ApiError, loginUser, storeAuth } from "@/lib/api";
+import {
+  ApiError,
+  AuthSessionResponse,
+  apiRequest,
+  getValidAuthToken,
+  loginUser,
+  storeAuth,
+} from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +24,38 @@ export default function LoginPage() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const redirectAuthenticatedUser = async () => {
+      const token = getValidAuthToken();
+
+      if (!token) {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+        return;
+      }
+
+      try {
+        await apiRequest<AuthSessionResponse>("/auth/session", { token });
+        router.replace("/profile");
+      } catch {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    redirectAuthenticatedUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -58,6 +96,9 @@ export default function LoginPage() {
       <section className="mx-auto max-w-xl px-5 pb-20 sm:px-8">
         <ContentCard>
           <form className="space-y-5" onSubmit={handleSubmit}>
+            {isCheckingSession ? (
+              <p className="text-sm text-stone-600">Checking saved session...</p>
+            ) : null}
             {error ? (
               <p className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -81,7 +122,12 @@ export default function LoginPage() {
               onChange={handleChange}
               required
             />
-            <Button className="w-full" disabled={isSubmitting} size="lg" type="submit">
+            <Button
+              className="w-full"
+              disabled={isCheckingSession || isSubmitting}
+              size="lg"
+              type="submit"
+            >
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
           </form>

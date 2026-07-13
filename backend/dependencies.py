@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 
 from database import get_profiles_collection, get_users_collection
 from jwt_handler import ALGORITHM, SECRET_KEY
+from services.account_identity import find_user_by_email
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -55,7 +56,7 @@ def get_current_user(
         raise credentials_exception from error
 
     users = get_users_or_503()
-    user = users.find_one({"email": email})
+    user = find_user_by_email(users, email)
 
     if user is None:
         raise credentials_exception

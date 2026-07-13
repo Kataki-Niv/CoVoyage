@@ -5,6 +5,8 @@ import certifi
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
+from services.account_identity import EMAIL_COLLATION
+
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -50,7 +52,15 @@ def get_users_collection():
     if database is None:
         connect_to_mongodb()
 
-    return database["users"]
+    users = database["users"]
+    users.create_index("username", unique=True, sparse=True)
+    users.create_index(
+        "email",
+        unique=True,
+        name="email_unique",
+        collation=EMAIL_COLLATION,
+    )
+    return users
 
 
 def get_profiles_collection():
@@ -59,6 +69,7 @@ def get_profiles_collection():
 
     profiles = database["profiles"]
     profiles.create_index("user_id", unique=True)
+    profiles.create_index("username", unique=True, sparse=True)
     return profiles
 
 

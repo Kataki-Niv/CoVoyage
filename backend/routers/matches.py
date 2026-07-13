@@ -6,7 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import get_matches_collection
 from dependencies import get_current_user, get_profiles_or_503
-from services.rule_based_matching import find_rule_based_matches
+from services.ai_matching_pipeline import (
+    AIProfileMatch,
+    build_ai_match_reason,
+    find_ai_profile_matches,
+)
+from services.profile_completeness import (
+    INCOMPLETE_PROFILE_MATCHING_MESSAGE,
+    evaluate_profile_completeness,
+)
 
 
 router = APIRouter(prefix="/matches", tags=["matches"])
@@ -34,25 +42,18 @@ def serialize_value(value: Any) -> Any:
     return value
 
 
-def serialize_match(scored_match) -> dict[str, Any]:
-    profile = dict(scored_match.profile)
+def serialize_match(match: AIProfileMatch) -> dict[str, Any]:
+    profile = dict(match.profile)
     profile.pop("_id", None)
     profile.setdefault("preferred_travel_gender", "Anyone")
 
     return {
+        "user_id": match.user_id,
         "profile": serialize_value(profile),
-        "compatibility_score": scored_match.compatibility_score,
-        "reason": scored_match.reason,
-        "factors": [
-            {
-                "name": factor.name,
-                "score": factor.score,
-                "weight": factor.weight,
-                "matches": factor.matches,
-            }
-            for factor in scored_match.factors
-            if factor.score > 0
-        ],
+        "semantic_score": match.semantic_score,
+        "compatibility_score": match.compatibility_score,
+        "reason": build_ai_match_reason(match),
+        "factors": [],
     }
 
 
@@ -68,15 +69,24 @@ def get_matches(current_user=Depends(get_current_user)):
             detail="Create a travel profile before finding matches",
         )
 
-    candidate_profiles = list(
-        profiles.find({"user_id": {"$ne": current_user_id}})
-    )
-    scored_matches = find_rule_based_matches(
+    completeness = evaluate_profile_completeness(current_profile)
+
+    if not completeness.complete:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "profile_incomplete",
+                "message": INCOMPLETE_PROFILE_MATCHING_MESSAGE,
+                "profile_completeness": completeness.to_dict(),
+            },
+        )
+
+    ai_matches = find_ai_profile_matches(
         current_profile,
-        candidate_profiles,
+        profiles,
     )
 
-    return [serialize_match(match) for match in scored_matches]
+    return [serialize_match(match) for match in ai_matches]
 
 
 @router.get("/status")

@@ -8,6 +8,7 @@ const AUTH_CHANGE_EVENT = "covoyage-auth-change";
 
 export type AuthUser = {
   name?: string;
+  username?: string;
   email?: string;
 };
 
@@ -74,6 +75,7 @@ export function getApiErrorMessage(
 export class ApiError extends Error {
   status: number;
   detail: string;
+  rawDetail: unknown;
 
   constructor(status: number, detail: unknown) {
     const message = getApiErrorMessage(detail);
@@ -82,6 +84,7 @@ export class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
     this.detail = message;
+    this.rawDetail = detail;
   }
 }
 
@@ -105,6 +108,21 @@ export function getAuthToken() {
   }
 
   return window.localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function getValidAuthToken() {
+  const token = getAuthToken();
+
+  if (!token) {
+    return null;
+  }
+
+  if (isAuthTokenExpired(token)) {
+    clearAuth();
+    return null;
+  }
+
+  return token;
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -153,7 +171,7 @@ export function clearAuth() {
 }
 
 export function isAuthenticated() {
-  return Boolean(getAuthToken());
+  return Boolean(getValidAuthToken());
 }
 
 export function isAuthTokenExpired(token: string | null) {

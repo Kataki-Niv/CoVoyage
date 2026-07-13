@@ -10,7 +10,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
-import { ApiError, apiRequest, clearAuth, getAuthToken } from "@/lib/api";
+import { ApiError, apiRequest, clearAuth, getValidAuthToken } from "@/lib/api";
 
 type PublicTravelProfile = {
   user_id: string;
@@ -117,7 +117,7 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     const loadPublicProfile = async () => {
-      const token = getAuthToken();
+      const token = getValidAuthToken();
 
       if (!token) {
         router.push("/login");

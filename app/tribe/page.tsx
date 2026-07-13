@@ -9,7 +9,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
-import { ApiError, apiRequest, getAuthToken } from "@/lib/api";
+import { ApiError, apiRequest, getValidAuthToken } from "@/lib/api";
 
 type MatchProfile = {
   user_id: string;
@@ -26,9 +26,12 @@ type MatchProfile = {
 };
 
 type MatchResult = {
+  user_id: string;
   profile: MatchProfile;
+  semantic_score?: number;
   compatibility_score: number;
   reason: string;
+  factors?: unknown[];
 };
 
 const emptyStateMessage =
@@ -86,7 +89,7 @@ export default function TribePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchMatches = useCallback(async () => {
-    const token = getAuthToken();
+    const token = getValidAuthToken();
 
     if (!token) {
       throw new Error("Please log in to view your matches.");
@@ -214,6 +217,7 @@ export default function TribePage() {
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {matches.map((match) => {
                 const profile = match.profile;
+                const profileUserId = profile.user_id || match.user_id;
                 const displayName =
                   profile.name || profile.username || "CoVoyage Traveler";
                 const location = [profile.city, profile.country]
@@ -221,7 +225,7 @@ export default function TribePage() {
                   .join(", ");
 
                 return (
-                  <ContentCard key={profile.user_id}>
+                  <ContentCard key={profileUserId}>
                     <div className="flex items-start gap-4">
                       <MatchAvatar
                         displayName={displayName}
@@ -285,7 +289,7 @@ export default function TribePage() {
                       </div>
                     </dl>
                     <Button asChild className="mt-6 w-full" variant="outline">
-                      <Link href={`/profile/${encodeURIComponent(profile.user_id)}`}>
+                      <Link href={`/profile/${encodeURIComponent(profileUserId)}`}>
                         View Profile
                       </Link>
                     </Button>

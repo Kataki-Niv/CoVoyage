@@ -1,6 +1,8 @@
 from pathlib import Path
 import sys
 
+from bson import ObjectId
+
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -12,16 +14,17 @@ from database import get_profiles_collection, get_users_collection
 
 
 TEST_PASSWORD = "CoVoyageTest123!"
-TEST_EMAIL_DOMAIN = "seed.covoyage.test"
 
 TEST_TRAVELERS = [
     {
         "name": "Maya Chen",
         "username": "maya.bali.frames",
-        "email": "maya.chen@seed.covoyage.test",
+        "email": "maya.chen@covoyagetest.com",
         "age": 29,
         "gender": "Female",
         "preferred_travel_gender": "Female",
+        "country": "Indonesia",
+        "city": "Canggu",
         "bio": "Slow traveler chasing sunrise walks, beach cafes, and quiet photography spots.",
         "profile_picture_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
         "preferred_destinations": ["Bali", "Lombok", "Chiang Mai"],
@@ -36,10 +39,12 @@ TEST_TRAVELERS = [
     {
         "name": "Arjun Mehta",
         "username": "arjun.nomad",
-        "email": "arjun.mehta@seed.covoyage.test",
+        "email": "arjun.mehta@covoyagetest.com",
         "age": 31,
         "gender": "Male",
         "preferred_travel_gender": "Anyone",
+        "country": "India",
+        "city": "Bengaluru",
         "bio": "Remote worker who likes affordable stays, scooters, food markets, and gentle adventure.",
         "profile_picture_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
         "preferred_destinations": ["Bali", "Chiang Mai", "Da Nang"],
@@ -54,10 +59,12 @@ TEST_TRAVELERS = [
     {
         "name": "Elena Rossi",
         "username": "elena.seasides",
-        "email": "elena.rossi@seed.covoyage.test",
+        "email": "elena.rossi@covoyagetest.com",
         "age": 28,
         "gender": "Female",
         "preferred_travel_gender": "Female",
+        "country": "Italy",
+        "city": "Rome",
         "bio": "Culture-first beach wanderer looking for relaxed days, markets, and scenic walks.",
         "profile_picture_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
         "preferred_destinations": ["Bali", "Lisbon", "Madeira"],
@@ -72,10 +79,12 @@ TEST_TRAVELERS = [
     {
         "name": "Noah Williams",
         "username": "noah.photo.walks",
-        "email": "noah.williams@seed.covoyage.test",
+        "email": "noah.williams@covoyagetest.com",
         "age": 34,
         "gender": "Male",
         "preferred_travel_gender": "Female",
+        "country": "United States",
+        "city": "San Francisco",
         "bio": "City photographer planning warm destinations with easy food, beaches, and unhurried mornings.",
         "profile_picture_url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
         "preferred_destinations": ["Bali", "Lombok", "Lisbon"],
@@ -90,10 +99,12 @@ TEST_TRAVELERS = [
     {
         "name": "Sofia Almeida",
         "username": "sofia.lisbon.lanes",
-        "email": "sofia.almeida@seed.covoyage.test",
+        "email": "sofia.almeida@covoyagetest.com",
         "age": 30,
         "gender": "Female",
         "preferred_travel_gender": "Anyone",
+        "country": "Portugal",
+        "city": "Lisbon",
         "bio": "Museum lover and food-map maker planning slow European city breaks.",
         "profile_picture_url": "https://images.unsplash.com/photo-1517841905240-472988babdf9",
         "preferred_destinations": ["Lisbon", "Porto", "Barcelona"],
@@ -108,10 +119,12 @@ TEST_TRAVELERS = [
     {
         "name": "Mateo Silva",
         "username": "mateo.tables",
-        "email": "mateo.silva@seed.covoyage.test",
+        "email": "mateo.silva@covoyagetest.com",
         "age": 33,
         "gender": "Male",
         "preferred_travel_gender": "Anyone",
+        "country": "Portugal",
+        "city": "Porto",
         "bio": "Food-focused traveler happiest around markets, tiled streets, and late dinners.",
         "profile_picture_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
         "preferred_destinations": ["Lisbon", "Porto", "Seville"],
@@ -126,10 +139,12 @@ TEST_TRAVELERS = [
     {
         "name": "Priya Nair",
         "username": "priya.trails",
-        "email": "priya.nair@seed.covoyage.test",
+        "email": "priya.nair@covoyagetest.com",
         "age": 27,
         "gender": "Female",
         "preferred_travel_gender": "Female",
+        "country": "India",
+        "city": "Kochi",
         "bio": "Trail-first traveler looking for mountain mornings, simple stays, and strong coffee.",
         "profile_picture_url": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
         "preferred_destinations": ["Nepal", "Bhutan", "Ladakh"],
@@ -144,10 +159,12 @@ TEST_TRAVELERS = [
     {
         "name": "Daniel Kim",
         "username": "daniel.highpasses",
-        "email": "daniel.kim@seed.covoyage.test",
+        "email": "daniel.kim@covoyagetest.com",
         "age": 32,
         "gender": "Male",
         "preferred_travel_gender": "Anyone",
+        "country": "South Korea",
+        "city": "Seoul",
         "bio": "Backpacker planning high passes, mountain villages, and photography-heavy days.",
         "profile_picture_url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
         "preferred_destinations": ["Nepal", "Ladakh", "Patagonia"],
@@ -162,10 +179,12 @@ TEST_TRAVELERS = [
     {
         "name": "Amina Hassan",
         "username": "amina.desertlight",
-        "email": "amina.hassan@seed.covoyage.test",
+        "email": "amina.hassan@covoyagetest.com",
         "age": 35,
         "gender": "Female",
         "preferred_travel_gender": "Anyone",
+        "country": "Morocco",
+        "city": "Marrakech",
         "bio": "Landscape photographer drawn to deserts, mountain light, and quiet overland routes.",
         "profile_picture_url": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce",
         "preferred_destinations": ["Morocco", "Jordan", "Ladakh"],
@@ -180,10 +199,12 @@ TEST_TRAVELERS = [
     {
         "name": "Liam O'Connor",
         "username": "liam.rail.days",
-        "email": "liam.oconnor@seed.covoyage.test",
+        "email": "liam.oconnor@covoyagetest.com",
         "age": 38,
         "gender": "Male",
         "preferred_travel_gender": "Anyone",
+        "country": "Ireland",
+        "city": "Dublin",
         "bio": "Rail journey enthusiast looking for scenic routes, old stations, and easy conversation.",
         "profile_picture_url": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef",
         "preferred_destinations": ["Switzerland", "Austria", "Scotland"],
@@ -198,10 +219,12 @@ TEST_TRAVELERS = [
     {
         "name": "Hana Novak",
         "username": "hana.alpine",
-        "email": "hana.novak@seed.covoyage.test",
+        "email": "hana.novak@covoyagetest.com",
         "age": 29,
         "gender": "Female",
         "preferred_travel_gender": "Anyone",
+        "country": "Czechia",
+        "city": "Prague",
         "bio": "Alpine walker mixing train days, museums, and mountain views.",
         "profile_picture_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2",
         "preferred_destinations": ["Switzerland", "Slovenia", "Austria"],
@@ -216,10 +239,12 @@ TEST_TRAVELERS = [
     {
         "name": "Grace Thompson",
         "username": "grace.luxe",
-        "email": "grace.thompson@seed.covoyage.test",
+        "email": "grace.thompson@covoyagetest.com",
         "age": 41,
         "gender": "Female",
         "preferred_travel_gender": "Female",
+        "country": "United Kingdom",
+        "city": "London",
         "bio": "Luxury traveler planning wellness escapes, fine dining, and boutique stays.",
         "profile_picture_url": "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c",
         "preferred_destinations": ["Maldives", "Seychelles", "Dubai"],
@@ -234,10 +259,12 @@ TEST_TRAVELERS = [
     {
         "name": "Omar Farouk",
         "username": "omar.citynights",
-        "email": "omar.farouk@seed.covoyage.test",
+        "email": "omar.farouk@covoyagetest.com",
         "age": 26,
         "gender": "Male",
         "preferred_travel_gender": "Anyone",
+        "country": "United Arab Emirates",
+        "city": "Dubai",
         "bio": "Nightlife and food traveler looking for fast-paced city weekends.",
         "profile_picture_url": "https://images.unsplash.com/photo-1527980965255-d3b416303d12",
         "preferred_destinations": ["Tokyo", "Seoul", "Bangkok"],
@@ -252,10 +279,12 @@ TEST_TRAVELERS = [
     {
         "name": "Yuki Tanaka",
         "username": "yuki.nomad.cafes",
-        "email": "yuki.tanaka@seed.covoyage.test",
+        "email": "yuki.tanaka@covoyagetest.com",
         "age": 30,
         "gender": "Non-binary",
         "preferred_travel_gender": "Anyone",
+        "country": "Japan",
+        "city": "Tokyo",
         "bio": "Cafe-hopping remote worker who likes workations, local food, and efficient transit.",
         "profile_picture_url": "https://images.unsplash.com/photo-1554151228-14d9def656e4",
         "preferred_destinations": ["Seoul", "Taipei", "Da Nang"],
@@ -270,10 +299,12 @@ TEST_TRAVELERS = [
     {
         "name": "Nora Ellis",
         "username": "nora.templedays",
-        "email": "nora.ellis@seed.covoyage.test",
+        "email": "nora.ellis@covoyagetest.com",
         "age": 36,
         "gender": "Female",
         "preferred_travel_gender": "Anyone",
+        "country": "Japan",
+        "city": "Kyoto",
         "bio": "Quiet itinerary builder interested in temples, tea, gardens, and slow mornings.",
         "profile_picture_url": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f",
         "preferred_destinations": ["Kyoto", "Nara", "Kanazawa"],
@@ -293,9 +324,12 @@ def build_profile_document(user_id: str, traveler: dict) -> dict:
         "user_id": user_id,
         "name": traveler["name"],
         "username": traveler["username"],
+        "email": traveler["email"],
         "age": traveler["age"],
         "gender": traveler["gender"],
         "preferred_travel_gender": traveler["preferred_travel_gender"],
+        "country": traveler["country"],
+        "city": traveler["city"],
         "bio": traveler["bio"],
         "profile_picture_url": traveler.get("profile_picture_url"),
         "preferred_destinations": traveler["preferred_destinations"],
@@ -309,6 +343,23 @@ def build_profile_document(user_id: str, traveler: dict) -> dict:
     }
 
 
+def find_existing_seed_user(users, profiles, traveler: dict):
+    profile = profiles.find_one({"username": traveler["username"]})
+
+    if profile and profile.get("user_id"):
+        try:
+            user = users.find_one({"_id": ObjectId(profile["user_id"])})
+
+            if user:
+                return user
+        except Exception:
+            pass
+
+    return users.find_one({"username": traveler["username"]}) or users.find_one(
+        {"email": traveler["email"]},
+    )
+
+
 def seed_test_profiles():
     users = get_users_collection()
     profiles = get_profiles_collection()
@@ -317,16 +368,21 @@ def seed_test_profiles():
     upserted_profiles = 0
 
     for traveler in TEST_TRAVELERS:
+        existing_user = find_existing_seed_user(users, profiles, traveler)
+        user_filter = (
+            {"_id": existing_user["_id"]}
+            if existing_user
+            else {"email": traveler["email"]}
+        )
         result = users.update_one(
-            {"email": traveler["email"]},
+            user_filter,
             {
                 "$set": {
                     "name": traveler["name"],
+                    "username": traveler["username"],
+                    "email": traveler["email"],
                     "password": password_hash,
                     "is_test_seed": True,
-                },
-                "$setOnInsert": {
-                    "email": traveler["email"],
                 },
             },
             upsert=True,
@@ -335,7 +391,9 @@ def seed_test_profiles():
         if result.upserted_id is not None:
             created_users += 1
 
-        user = users.find_one({"email": traveler["email"]})
+        user = users.find_one(user_filter) or users.find_one(
+            {"email": traveler["email"]},
+        )
         profile_document = build_profile_document(str(user["_id"]), traveler)
         profile_document["is_test_seed"] = True
         profiles.update_one(

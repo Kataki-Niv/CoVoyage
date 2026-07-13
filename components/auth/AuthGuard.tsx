@@ -8,8 +8,7 @@ import {
   AuthSessionResponse,
   apiRequest,
   clearAuth,
-  getAuthToken,
-  isAuthTokenExpired,
+  getValidAuthToken,
 } from "@/lib/api";
 
 type AuthGuardProps = {
@@ -25,10 +24,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
     let isMounted = true;
 
     const verifySession = async () => {
-      const token = getAuthToken();
+      setIsAllowed(false);
+      const token = getValidAuthToken();
 
-      if (!token || isAuthTokenExpired(token)) {
-        clearAuth();
+      if (!token) {
         router.replace("/login");
         return;
       }

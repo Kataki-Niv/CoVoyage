@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { FormField } from "@/components/shared/FormField";
 import { PageShell } from "@/components/shared/PageShell";
-import { ApiError, apiRequest, loginUser, storeAuth } from "@/lib/api";
+import {
+  ApiError,
+  AuthSessionResponse,
+  apiRequest,
+  getValidAuthToken,
+  loginUser,
+  storeAuth,
+} from "@/lib/api";
 
 const SIGNUP_SUCCESS_TOAST =
   "🎉 Welcome to CoVoyage! Your account has been created successfully.";
@@ -25,7 +32,38 @@ export default function SignupPage() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const redirectAuthenticatedUser = async () => {
+      const token = getValidAuthToken();
+
+      if (!token) {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+        return;
+      }
+
+      try {
+        await apiRequest<AuthSessionResponse>("/auth/session", { token });
+        router.replace("/profile");
+      } catch {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    redirectAuthenticatedUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -54,6 +92,7 @@ export default function SignupPage() {
         method: "POST",
         body: JSON.stringify({
           name: formData.name,
+          username: formData.username,
           email: formData.email,
           password: formData.password,
         }),
@@ -84,6 +123,11 @@ export default function SignupPage() {
       <section className="mx-auto max-w-2xl px-5 pb-20 sm:px-8">
         <ContentCard>
           <form className="grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
+            {isCheckingSession ? (
+              <p className="text-sm text-stone-600 sm:col-span-2">
+                Checking saved session...
+              </p>
+            ) : null}
             {error ? (
               <p className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">
                 {error}
@@ -103,6 +147,7 @@ export default function SignupPage() {
               placeholder="maya.travels"
               value={formData.username}
               onChange={handleChange}
+              required
             />
             <FormField
               className="sm:col-span-2"
@@ -132,7 +177,12 @@ export default function SignupPage() {
               onChange={handleChange}
               required
             />
-            <Button className="sm:col-span-2" disabled={isSubmitting} size="lg" type="submit">
+            <Button
+              className="sm:col-span-2"
+              disabled={isCheckingSession || isSubmitting}
+              size="lg"
+              type="submit"
+            >
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
