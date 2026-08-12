@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { clearAuth, isAuthenticated, onAuthChange } from "@/lib/api";
 
 const navItems = [
-  { label: "Community", href: "/#community" },
-  { label: "Find Your Tribe", href: "/tribe" },
-  { label: "Local Vibe", href: "/vibe" },
-  { label: "Journal", href: "/blogs" },
-  { label: "FAQ", href: "/#faq" },
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+  { label: "Profile", href: "/profile" },
 ];
 
 export function Navbar() {
@@ -21,6 +20,10 @@ export function Navbar() {
   const pathname = usePathname();
   const [hasToken, setHasToken] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const brandHref =
+    pathname?.startsWith("/explore/") ? "/explore" : "/";
+  const isHomePage = pathname === "/";
 
   useEffect(() => {
     const syncAuthState = () => {
@@ -30,6 +33,23 @@ export function Navbar() {
     syncAuthState();
     return onAuthChange(syncAuthState);
   }, []);
+
+  useEffect(() => {
+    if (!isHomePage) {
+      return;
+    }
+
+    const syncScrollState = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+
+    syncScrollState();
+    window.addEventListener("scroll", syncScrollState, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", syncScrollState);
+    };
+  }, [isHomePage]);
 
   const handleLogout = () => {
     clearAuth();
@@ -46,52 +66,57 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200/80 bg-[#fbf8f2]/90 backdrop-blur">
+    <header
+      className={`sticky top-0 z-40 ${
+        isHomePage && !isScrolled
+          ? "border-b border-transparent bg-transparent shadow-none"
+          : "border-b border-white/10 bg-black/30 shadow-sm shadow-black/20 backdrop-blur-2xl"
+      } transition-colors duration-300`}
+    >
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <Link className="flex items-center gap-3" href="/">
-          <span className="grid h-10 w-10 place-items-center rounded-full border border-stone-300 bg-white text-sm font-semibold text-stone-800">
+        <Link className="flex items-center gap-3" href={brandHref}>
+          <span className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10 text-sm font-semibold text-white shadow-sm shadow-black/20">
             CV
           </span>
-          <span className="font-serif text-2xl text-stone-900">CoVoyage</span>
+          <span className="font-serif text-xl text-white">CoVoyage</span>
         </Link>
 
-        <div className="hidden items-center gap-8 lg:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {navItems.map((item) => (
-  <Link
-    key={item.label}
-    href={item.href}
-    className="text-xs font-medium uppercase tracking-[0.22em] text-stone-600 transition-colors hover:text-stone-950"
-  >
-    {item.label}
-  </Link>
-))}
+            <Link
+              key={item.label}
+              href={item.href}
+              className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+              onClick={item.href === "/profile" ? handleProfileClick : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <Button asChild aria-label="Search" size="sm" variant="ghost">
-            <Link href="/blogs">
-              <Search className="h-4 w-4" />
-            </Link>
-          </Button>
+        <div className="hidden items-center gap-6 md:flex">
           {hasToken ? (
-            <>
-              <Button asChild size="sm" variant="ghost">
-                <Link href="/profile" onClick={handleProfileClick}>
-                  Profile
-                </Link>
-              </Button>
-              <Button size="sm" type="button" onClick={handleLogout}>
-                Logout
-              </Button>
-            </>
+            <button
+              className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+              type="button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
           ) : (
             <>
-              <Button asChild size="sm" variant="ghost">
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/signup">Sign Up</Link>
-              </Button>
+              <Link
+                className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                href="/login"
+              >
+                Login
+              </Link>
+              <Link
+                className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                href="/signup"
+              >
+                Sign Up
+              </Link>
             </>
           )}
         </div>
@@ -99,7 +124,7 @@ export function Navbar() {
         <Button
           aria-expanded={isMenuOpen}
           aria-label="Open navigation"
-          className="md:hidden"
+          className="border-white/25 bg-white/10 text-white hover:bg-white/20 md:hidden"
           size="sm"
           type="button"
           variant="outline"
@@ -109,42 +134,47 @@ export function Navbar() {
         </Button>
       </nav>
       {isMenuOpen ? (
-        <div className="border-t border-stone-200 bg-[#fbf8f2] px-5 py-5 md:hidden">
+        <div className="border-t border-white/10 bg-black/30 px-5 py-5 shadow-lg shadow-black/20 backdrop-blur-2xl md:hidden">
           <div className="mx-auto grid max-w-7xl gap-4">
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="text-xs font-medium uppercase tracking-[0.22em] text-stone-600 transition-colors hover:text-stone-950"
-                onClick={() => setIsMenuOpen(false)}
+                className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                onClick={
+                  item.href === "/profile"
+                    ? handleProfileClick
+                    : () => setIsMenuOpen(false)
+                }
               >
                 {item.label}
               </Link>
             ))}
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-6 pt-2">
               {hasToken ? (
-                <>
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href="/profile" onClick={handleProfileClick}>
-                      Profile
-                    </Link>
-                  </Button>
-                  <Button size="sm" type="button" onClick={handleLogout}>
-                    Logout
-                  </Button>
-                </>
+                <button
+                  className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                  type="button"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
               ) : (
                 <>
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                      Login
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm">
-                    <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
-                      Sign Up
-                    </Link>
-                  </Button>
+                  <Link
+                    className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                    href="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                    href="/signup"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
                 </>
               )}
             </div>
