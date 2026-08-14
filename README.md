@@ -7,15 +7,14 @@
 *Travel is better when you find the right people—not just the right destination.*
 
 <p align="center">
-An intelligent social travel platform that connects compatible travelers through AI-powered matching, personalized trip planning, and a community-driven travel experience.
+An intelligent social travel platform that connects compatible travelers through AI-powered matching, destination discovery, local intelligence, and a community-driven travel experience.
 </p>
 
-![Status](https://img.shields.io/badge/Status-Under%20Development-orange)
+![Status](https://img.shields.io/badge/Status-Prototype-orange)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.116-green)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-brightgreen)
-![Gemini](https://img.shields.io/badge/AI-Gemini-blue)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![Pinecone](https://img.shields.io/badge/Vector%20Search-Pinecone-purple)
 
 </div>
 
@@ -23,15 +22,22 @@ An intelligent social travel platform that connects compatible travelers through
 
 # 🌍 About CoVoyage
 
-CoVoyage is an AI-native social travel platform designed to transform how people discover travel companions and plan journeys together.
+CoVoyage is an **AI-powered social travel ecosystem** built around a simple idea:
 
-Instead of simply helping users book trips, CoVoyage focuses on one of the biggest challenges in travel:
+> **Travel is better when you find the right people—not just the right destination.**
 
-> **Finding people you genuinely want to travel with.**
+The prototype brings together traveler matching, destination discovery, local travel intelligence, travel journals, community experiences, and travel essentials into one connected platform.
 
-The platform combines intelligent traveler matching, personalized travel planning, AI-assisted recommendations, and a growing travel community into one unified ecosystem.
+Instead of treating travel planning as a collection of separate tools, CoVoyage explores what it could look like to have a single ecosystem where travelers can:
 
-Our goal is to make travel **safer, more social, and more personalized** through modern web technologies and artificial intelligence.
+- Find compatible co-travelers
+- Explore destinations and local culture
+- Discover community tips and experiences
+- Read and share travel journals
+- Discover local events and activities
+- Find useful last-minute travel essentials
+
+The current version is a **working prototype**, not a finished production application. Some planned AI capabilities and integrations are still part of the future roadmap.
 
 ---
 
@@ -39,7 +45,7 @@ Our goal is to make travel **safer, more social, and more personalized** through
 
 ### 👤 Personalized Travel Profiles
 
-Create a travel identity with:
+Create a personal travel profile containing:
 
 - Profile Photo
 - Bio
@@ -48,61 +54,102 @@ Create a travel identity with:
 - Travel Style
 - Budget Range
 - Preferred Trip Duration
-- Languages Spoken
+- Languages
 - Travel Dates
+- Travel Preferences
+
+Users can also control whether their profile is discoverable through the traveler matching system.
 
 ---
 
-### 🤝 Intelligent Traveler Matching
+### 🤝 AI Traveler Matching
 
-Discover compatible travelers using:
+CoVoyage matches travelers based on semantic and structured compatibility.
 
-- Destination Compatibility
-- Shared Interests
-- Travel Style Matching
-- Budget Compatibility
-- Travel Date Overlap
-- Preferred Trip Duration
-- Common Languages
-- AI Semantic Matching 
+The matching system considers:
 
----
+- Shared destinations
+- Travel date overlap
+- Travel preferences
+- Interests
+- Travel style
+- Budget
+- Languages
+- Preferred travel gender
+- Semantic profile similarity
 
-### 🧠 AI-Powered Travel Intelligence
+Traveler profiles are converted into embeddings using **multilingual-e5-large** and compared using vector similarity through **Pinecone**.
 
-CoVoyage is being designed with AI at its core.
-
-Upcoming capabilities include:
-
-- Semantic traveler matching
-- AI-generated compatibility explanations
-- Intelligent itinerary generation
-- Personalized destination recommendations
-- Conversational travel assistant
-- Context-aware travel insights
+The system also applies hard eligibility filters before calculating compatibility, so travelers must meet important requirements such as destination and date overlap.
 
 ---
 
-### 🌎 Community
+### 🌎 Explore & Local Vibe
 
-Connect with travelers through:
+Explore destinations through a visual travel discovery experience.
 
-- Travel Blogs
-- Shared Experiences
-- Community Discussions
-- Travel Inspiration
-- Future Trip Collaboration
+Destination intelligence includes:
+
+- Culture
+- Local tips
+- Do's & Don'ts
+- Safety information
+- Travel essentials
+- Language
+- Currency
+- Time zone
+- Destination recommendations
+- Community-generated information
+
+The goal is to help travelers understand a destination rather than simply visit it.
 
 ---
 
-### 🛍 Smart Travel Marketplace *(Planned)*
+### 📰 Travel Journals
 
-A curated marketplace providing:
+CoVoyage includes a journal and discovery experience for travel stories.
 
-- Destination-specific travel essentials
-- Context-aware recommendations
-- Travel gear suggestions
-- Local experiences
+Users can explore:
+
+- Video journals
+- Photo journals
+- Text journals
+- Travel experiences
+- Destination stories
+
+The journal section is designed to make the platform feel like an active travel community rather than a static planning tool.
+
+---
+
+### 📅 Events & Community Experiences
+
+The prototype includes infrastructure for discovering and sharing travel-related activities and events.
+
+Examples include:
+
+- Trekking groups
+- Festivals
+- Photography walks
+- Food experiences
+- Local activities
+- Community meetups
+
+---
+
+### 🛍️ CoVoyage Essentials
+
+A travel-essentials section for useful and unusual items travelers may need before or during a trip.
+
+Examples include:
+
+- Travel adapters
+- Power banks
+- Travel bottles
+- Neck pillows
+- Anti-theft travel gear
+- Multi-purpose travel clothing
+
+The current version is primarily a prototype experience and can be expanded into a full travel marketplace in the future.
 
 ---
 
@@ -133,15 +180,17 @@ CoVoyage brings these experiences together into a single intelligent platform th
                            ▼
                     FastAPI Backend
                            │
-          ┌────────────────┴────────────────┐
-          │                                 │
-          ▼                                 ▼
-    MongoDB Atlas                   AI Intelligence Layer
-   User & Travel Data        Gemini • Embeddings • Vector Search
-          │                                 │
-          └────────────────┬────────────────┘
-                           ▼
-                Intelligent Travel Matching
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+        MongoDB Atlas              Pinecone
+     Application & Profile      Vector Embeddings
+             Data                    │
+                                    ▼
+                         Semantic Traveler Matching
+                                    │
+                                    ▼
+                       Compatibility Scoring
 ```
 
 ---
@@ -149,39 +198,42 @@ CoVoyage brings these experiences together into a single intelligent platform th
 # 🛠 Technology Stack
 
 | Layer | Technologies |
-|--------|--------------|
+|---|---|
 | Frontend | Next.js, React, TypeScript |
-| Styling | Tailwind CSS, shadcn/ui, Framer Motion |
-| Backend | FastAPI (Python) |
+| Styling | Tailwind CSS, shadcn/ui |
+| Animation | Framer Motion |
+| Backend | FastAPI, Python |
 | Database | MongoDB Atlas |
 | Authentication | JWT |
-| Artificial Intelligence | Google Gemini |
-| Semantic Search | MongoDB Atlas Vector Search / Pinecone |
-| Cloud Deployment | Vercel & Render |
+| Embeddings | multilingual-e5-large |
+| Embedding Framework | Sentence Transformers |
+| Vector Search | Pinecone |
 | Version Control | Git & GitHub |
 
 ---
 
 # 📂 Project Structure
 
+```text
+CoVoyage/
+│
+├── app/                 # Next.js App Router pages
+├── components/          # Reusable UI components
+├── lib/                 # Frontend utilities and API helpers
+├── public/              # Images, videos and static assets
+│
+├── backend/
+│   ├── main.py          # FastAPI entry point
+│   ├── models.py
+│   ├── routers/
+│   ├── services/
+│   ├── scripts/
+│   └── data/
+│
+├── package.json
+├── next.config.ts
+└── README.md
 ```
-CoVoyage
-│
-├── frontend
-│
-├── backend
-│
-├── public
-│
-├── components
-│
-├── app
-│
-├── lib
-│
-└── docs
-```
-
 ---
 
 #  Getting Started
@@ -207,6 +259,21 @@ uvicorn main:app --reload
 
 ---
 
+
+# 🔮 Future Scope
+
+CoVoyage is currently a working prototype. Planned future development includes:
+
+- Gemini-powered personalized itinerary generation
+- Adaptive itinerary refinement
+- AI-generated compatibility explanations
+- Conversational AI travel assistant
+- Destination RAG for grounded travel information
+- MCP-based agent workflows
+- Google Cloud Agent Builder integration
+- Expanded community and event features
+- Full travel essentials marketplace
+---
 #  Vision
 
 CoVoyage aims to become the world's intelligent social travel ecosystem.
@@ -214,19 +281,6 @@ CoVoyage aims to become the world's intelligent social travel ecosystem.
 By combining artificial intelligence, semantic search, and community-driven experiences, the platform seeks to help travelers discover meaningful connections—not just destinations.
 
 Our long-term vision is to build an ecosystem where AI enhances every stage of the travel journey, from finding compatible companions to planning personalized adventures and sharing experiences with a global community.
-
----
-
-#  Built With
-
-- Next.js
-- FastAPI
-- MongoDB Atlas
-- Tailwind CSS
-- TypeScript
-- Python
-- Google Gemini
-- Pinecone
 
 ---
 
