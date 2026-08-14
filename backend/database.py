@@ -110,3 +110,89 @@ def get_chats_collection():
     chats = database["chats"]
     chats.create_index("participant_ids")
     return chats
+
+
+def get_countries_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    countries = database["countries"]
+    countries.create_index("slug", unique=True)
+    return countries
+
+
+def get_places_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    places = database["places"]
+    places.create_index(
+        [("country_slug", 1), ("slug", 1)],
+        unique=True,
+        name="country_slug_slug_unique",
+    )
+    places.create_index("country_slug")
+    return places
+
+
+def get_destination_monthly_factors_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    destination_monthly_factors = database["destination_monthly_factors"]
+    destination_monthly_factors.create_index(
+        [("year", 1), ("month", 1), ("country_slug", 1), ("place_slug", 1)],
+        unique=True,
+        name="year_month_country_place_unique",
+    )
+    destination_monthly_factors.create_index(
+        [("year", 1), ("month", 1)],
+        name="year_month_lookup",
+    )
+    destination_monthly_factors.create_index("country_slug")
+    return destination_monthly_factors
+
+
+def get_monthly_snapshots_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    monthly_snapshots = database["monthly_snapshots"]
+    monthly_snapshots.create_index(
+        [("year", 1), ("month", 1)],
+        unique=True,
+        name="year_month_unique",
+    )
+    return monthly_snapshots
+
+
+def get_community_tips_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    community_tips = database["community_tips"]
+    community_tips.create_index("place_slug")
+    community_tips.create_index("country_slug")
+    community_tips.create_index("created_at")
+    return community_tips
+
+
+def get_community_replies_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    community_replies = database["community_replies"]
+    community_replies.create_index("tip_id")
+    return community_replies
+
+
+def get_destination_events_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    destination_events = database["destination_events"]
+    destination_events.create_index("country_slug")
+    destination_events.create_index("place_slug")
+    destination_events.create_index("date_start")
+    destination_events.create_index("verification_status")
+    return destination_events

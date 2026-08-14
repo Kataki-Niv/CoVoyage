@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ExploreSearchForm } from "@/components/explore/ExploreSearchForm";
+import type { BackendFeaturedDestinationsResponse } from "@/lib/destinationApi";
 
 type FeaturedCountry = {
   country: string;
@@ -27,20 +28,29 @@ type CuratedPlace = {
   align: "left" | "right";
 };
 
-export function ExplorePage() {
+type ExplorePageProps = {
+  featuredSnapshot?: BackendFeaturedDestinationsResponse | null;
+};
+
+export function ExplorePage({ featuredSnapshot = null }: ExplorePageProps) {
+  const featuredData = mapFeaturedSnapshot(featuredSnapshot);
+
   return (
-    <main className="bg-[#fbf8f2] text-stone-900">
+    <main className="bg-[#0B0B0C] text-[#F5F1E8]">
       <ExploreHero />
-      <FeaturedThisMonth />
+      <FeaturedThisMonth
+        countries={featuredData.countries}
+        monthlyFeature={featuredData.monthlyFeature}
+      />
     </main>
   );
 }
 
 function ExploreHero() {
   return (
-    <section className="relative overflow-hidden px-5 pb-14 pt-14 sm:px-8 lg:pb-20">
+    <section className="relative overflow-hidden px-5 pb-10 pt-10 sm:px-8 lg:pb-14">
       <div className="mx-auto max-w-7xl">
-        <div className="relative min-h-[620px] overflow-hidden rounded-[4px] bg-stone-900">
+        <div className="relative min-h-[500px] overflow-hidden rounded-[4px] bg-[#111112]">
           <Image
             alt="Travelers overlooking a mountain valley at golden hour"
             className="absolute inset-0 h-full w-full object-cover"
@@ -49,8 +59,8 @@ function ExploreHero() {
             sizes="(min-width: 1280px) 1216px, calc(100vw - 40px)"
             src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=88"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(28,25,23,0.82),rgba(28,25,23,0.42)_48%,rgba(28,25,23,0.12)),linear-gradient(0deg,rgba(28,25,23,0.42),transparent_42%)]" />
-          <div className="relative z-10 flex min-h-[620px] flex-col justify-end px-6 py-10 sm:px-10 lg:px-16 lg:py-14">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.78),rgba(5,5,5,0.38)_48%,rgba(5,5,5,0.08)),linear-gradient(0deg,rgba(5,5,5,0.42),transparent_42%)]" />
+          <div className="relative z-10 flex min-h-[500px] flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 lg:py-12">
             <p className="mb-5 text-xs font-medium uppercase tracking-[0.42em] text-white/75">
               CoVoyage Discover
             </p>
@@ -69,7 +79,13 @@ function ExploreHero() {
   );
 }
 
-function FeaturedThisMonth() {
+function FeaturedThisMonth({
+  countries,
+  monthlyFeature,
+}: {
+  countries: FeaturedCountry[];
+  monthlyFeature: MonthlyFeature;
+}) {
   return (
     <section
       aria-labelledby="explore-this-month-heading"
@@ -77,26 +93,30 @@ function FeaturedThisMonth() {
     >
       <div className="mx-auto max-w-7xl">
         <header className="mx-auto max-w-3xl pb-10 text-center sm:pb-12 lg:pb-14">
-          <p className="text-xs font-medium uppercase tracking-[0.34em] text-[#a97867]">
+          <p className="text-xs font-medium uppercase tracking-[0.34em] text-[#D8BE8A]">
             Explore This Month
           </p>
           <h2
-            className="mt-3 font-serif text-4xl leading-tight text-[#4f413c] sm:text-5xl lg:text-6xl"
+            className="mt-3 font-serif text-4xl leading-tight text-[#F5F1E8] sm:text-5xl lg:text-6xl"
             id="explore-this-month-heading"
           >
             Explore This Month
           </h2>
-          <p className="mt-4 text-sm font-medium uppercase tracking-[0.32em] text-[#8d6255] sm:text-base">
+          <p className="mt-4 text-sm font-medium uppercase tracking-[0.32em] text-[#D8BE8A]/80 sm:text-base">
             {monthlyFeature.month} {monthlyFeature.year}
           </p>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#7b665e] sm:text-base sm:leading-8">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#B8B0A4] sm:text-base sm:leading-8">
             {monthlyFeature.description}
           </p>
         </header>
       </div>
-      <div className="mx-auto grid max-w-7xl items-start gap-9 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[240px_minmax(0,1fr)]">
-        <FeaturedSidebar countries={featuredCountries} />
-        <FeaturedCountries countries={featuredCountries} />
+      <div className="relative isolate mx-auto grid max-w-7xl items-start gap-9 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="relative z-40 lg:sticky lg:top-28 lg:self-start">
+          <FeaturedSidebar countries={countries} />
+        </div>
+        <div className="relative z-0">
+          <FeaturedCountries countries={countries} />
+        </div>
       </div>
     </section>
   );
@@ -106,9 +126,9 @@ function FeaturedSidebar({ countries }: { countries: FeaturedCountry[] }) {
   return (
     <nav
       aria-label="Featured countries this month"
-      className="border border-[#d8b7aa] bg-[#fbf8f2] px-5 py-5 sm:px-6 sm:py-6 lg:sticky lg:top-28"
+      className="relative z-40 border border-white/10 bg-[#111112]/88 px-5 py-5 backdrop-blur-sm sm:px-6 sm:py-6"
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#7a5f56]">
+      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#D8BE8A]/82">
         Featured This Month
       </p>
       <ol className="mt-6 space-y-5">
@@ -117,23 +137,23 @@ function FeaturedSidebar({ countries }: { countries: FeaturedCountry[] }) {
             className="grid grid-cols-[1.1rem_1rem_minmax(0,1fr)] gap-x-3"
             key={country.country}
           >
-            <span className="pt-0.5 text-xs font-light text-[#cfae9e]">
+            <span className="pt-0.5 text-xs font-light text-[#D8BE8A]/52">
               {index + 1}
             </span>
-            <span className="mt-0.5 grid h-4 w-4 place-items-center bg-[#d8b7aa] text-[9px] font-semibold text-white">
+            <span className="mt-0.5 grid h-4 w-4 place-items-center bg-[#D8BE8A]/70 text-[9px] font-semibold text-[#0B0B0C]">
               +
             </span>
             <div>
               <a
-                className="block text-sm font-medium uppercase tracking-[0.14em] text-[#5e4d48] transition-colors hover:text-[#8d6255] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87666] focus-visible:ring-offset-4 focus-visible:ring-offset-[#fbf8f2]"
+                className="block text-sm font-medium uppercase tracking-[0.14em] text-[#F5F1E8] transition-colors hover:text-[#D8BE8A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A] focus-visible:ring-offset-4 focus-visible:ring-offset-[#0B0B0C]"
                 href={`#${country.id}`}
               >
                 {country.country}
               </a>
               <ul className="mt-3 space-y-1.5 pl-1">
-                {country.places.map((place) => (
+                {getVisiblePlaces(country).map((place) => (
                   <li
-                    className="text-xs uppercase tracking-[0.1em] text-[#6f5a53]"
+                    className="text-xs uppercase tracking-[0.1em] text-[#B8B0A4]"
                     key={place.name}
                   >
                     {place.shortName}
@@ -150,7 +170,7 @@ function FeaturedSidebar({ countries }: { countries: FeaturedCountry[] }) {
 
 function FeaturedCountries({ countries }: { countries: FeaturedCountry[] }) {
   return (
-    <div className="space-y-28 overflow-hidden px-0 pb-10 pt-1 md:px-4 lg:-mt-2 xl:space-y-32">
+    <div className="space-y-28 overflow-visible px-0 pb-10 pt-1 md:px-4 lg:-mt-2 xl:space-y-32">
       {countries.map((country) => (
         <FeaturedCountrySection
           country={country}
@@ -166,173 +186,174 @@ function FeaturedCountrySection({
 }: {
   country: FeaturedCountry;
 }) {
+  const places = getVisiblePlaces(country);
+
   return (
     <section
-      className="relative scroll-mt-28 border-t border-[#eadbd2] pt-14 first:border-t-0 first:pt-0 lg:pt-16"
+      className="relative scroll-mt-28 overflow-visible border-t border-white/10 pb-8 pt-8 first:border-t-0 first:pt-0 sm:pt-10 lg:min-h-[940px] lg:pb-16 lg:pt-16"
       id={country.id}
     >
-      <CountryStoryIntro country={country} />
-      <CountryRoute country={country} />
-    </section>
-  );
-}
-
-function CountryStoryIntro({ country }: { country: FeaturedCountry }) {
-  return (
-    <div className="grid items-end gap-9 lg:grid-cols-[minmax(0,0.48fr)_minmax(0,0.52fr)] lg:gap-14">
-      <div className="max-w-2xl">
-        <p className="text-xs font-medium uppercase tracking-[0.34em] text-[#a97867]">
-          {country.month} {country.year}
-        </p>
-        <h3 className="mt-3 font-serif text-5xl leading-[0.96] text-[#4f413c] sm:text-6xl lg:text-7xl xl:text-8xl">
+      <CountryBackground country={country} />
+      <div className="relative z-10 max-w-3xl">
+        <h3 className="font-serif text-6xl leading-[0.9] text-[#F5F1E8] sm:text-7xl lg:text-8xl">
           {country.country}
         </h3>
-        <p className="mt-5 text-sm font-medium uppercase tracking-[0.28em] text-[#8d6255]">
-          {country.featuredCategory}
-        </p>
-        <h4 className="mt-5 font-serif text-3xl leading-tight text-[#5a4740] sm:text-4xl">
-          {country.featuredHeadline}
-        </h4>
-        <p className="mt-5 text-sm leading-7 text-[#745f57] sm:text-base sm:leading-8">
+        <p className="mt-5 max-w-xl text-sm leading-7 text-[#D9D0C2] sm:text-base">
           {country.whyThisMonth}
         </p>
       </div>
-      <figure
-        className="relative min-h-[360px] overflow-hidden bg-[#e8d8cf] shadow-2xl shadow-[#b99686]/20 sm:min-h-[460px] lg:min-h-[560px]"
-        style={{
-          clipPath:
-            "polygon(7% 4%, 34% 0, 78% 4%, 100% 12%, 95% 80%, 82% 93%, 47% 100%, 13% 95%, 0 80%, 3% 22%)",
-        }}
-      >
-        <Image
-          alt={country.heroImageAlt}
-          className="absolute inset-0 h-full w-full object-cover"
-          fill
-          sizes="(min-width: 1024px) 39vw, calc(100vw - 40px)"
-          src={country.heroImage}
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(251,248,242,0),rgba(87,68,60,0.18))]" />
-      </figure>
-    </div>
-  );
-}
 
-function CountryRoute({ country }: { country: FeaturedCountry }) {
-  return (
-    <div className="relative mt-14 overflow-hidden pb-4 pt-2 sm:mt-16 lg:mt-20">
-      <RouteLine />
-      <div className="relative z-10 space-y-14 sm:space-y-16 lg:space-y-12">
-        {country.places.map((place) => (
-          <CuratedPlaceMoment key={place.name} place={place} />
-        ))}
+      <div className="relative z-10 mt-10 pb-4 lg:mt-14 lg:min-h-[640px]">
+        <CountryRouteLine placesCount={places.length} />
+        <div className="absolute bottom-0 left-4 top-2 w-px bg-[#D8BE8A]/18 lg:hidden" />
+        <div className="space-y-10 sm:space-y-12 lg:space-y-0">
+          {places.map((place, index) => (
+            <CountryPlaceMoment
+              countryName={country.country}
+              index={index}
+              key={place.name}
+              place={place}
+            />
+          ))}
+        </div>
       </div>
+
       <Link
-        className="relative z-10 mt-12 inline-flex border border-[#b87666] px-5 py-3 text-xs font-medium uppercase tracking-[0.2em] text-[#8d6255] transition-colors hover:bg-[#8d6255] hover:text-[#fffaf3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87666] focus-visible:ring-offset-4 focus-visible:ring-offset-[#fbf8f2]"
+        className="relative z-10 mt-6 inline-flex border border-[#D8BE8A]/55 px-5 py-3 text-xs font-medium uppercase tracking-[0.2em] text-[#D8BE8A] transition-colors hover:bg-[#D8BE8A] hover:text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A] focus-visible:ring-offset-4 focus-visible:ring-offset-[#0B0B0C]"
         href={country.detailPage}
       >
         Explore {country.country}
       </Link>
+    </section>
+  );
+}
+
+function CountryBackground({ country }: { country: FeaturedCountry }) {
+  const isLocalDestinationImage = country.id === "guatemala" || country.id === "spain";
+  const backgroundImage =
+    country.id === "iceland"
+      ? "https://images.unsplash.com/photo-1504829857797-ddff29c27927?auto=format&fit=crop&w=2200&q=88"
+      : country.id === "guatemala"
+        ? "/destination/gmm.jpg"
+        : country.id === "spain"
+          ? "/destination/spain.jpg"
+          : null;
+
+  if (!backgroundImage) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute left-1/2 top-0 z-0 h-full min-h-[920px] w-screen -translate-x-1/2 overflow-hidden lg:left-[calc(-1*((100vw-min(100vw,80rem))/2+19rem))] lg:w-[calc(100vw+2rem)] lg:translate-x-0"
+    >
+      <Image
+        alt=""
+        className="h-full w-full object-cover"
+        fill
+        sizes="100vw"
+        src={backgroundImage}
+      />
+      <div className={`absolute inset-0 ${isLocalDestinationImage ? "bg-black/74" : "bg-black/66"}`} />
+      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#0B0B0C] to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-b from-transparent to-[#0B0B0C]" />
+      <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-[#0B0B0C] to-transparent sm:w-56 lg:w-72" />
+      <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-[#0B0B0C] to-transparent sm:w-56 lg:w-72" />
     </div>
   );
 }
 
-function CuratedPlaceMoment({ place }: { place: CuratedPlace }) {
-  const image = <PlaceImage place={place} />;
-  const copy = <PlaceCopy place={place} />;
+function CountryPlaceMoment({
+  countryName,
+  index,
+  place,
+}: {
+  countryName: string;
+  index: number;
+  place: CuratedPlace;
+}) {
+  const imageFirst = index % 2 === 0;
+  const offsets = [
+    "lg:mr-auto lg:w-[68%]",
+    "lg:ml-auto lg:w-[66%] lg:pt-10",
+    "lg:mr-auto lg:w-[68%] lg:pl-8 lg:pt-20",
+    "lg:ml-auto lg:w-[66%] lg:pt-28",
+  ];
 
   return (
-    <article className="grid items-center gap-7 md:grid-cols-2 md:gap-8 lg:gap-12">
-      {place.align === "left" ? (
-        <>
-          {image}
-          <div className="md:pl-2 lg:pl-8">{copy}</div>
-        </>
-      ) : (
-        <>
-          <div className="md:order-2">{image}</div>
-          <div className="md:order-1 md:pr-4 lg:pr-10">{copy}</div>
-        </>
-      )}
+    <article className={`relative pl-10 lg:pl-0 ${offsets[index]}`}>
+      <div
+        className={`relative max-w-md border-l border-[#D8BE8A]/24 bg-[#090909]/46 px-5 py-5 backdrop-blur-[2px] ${
+          imageFirst ? "" : "lg:ml-auto"
+        }`}
+      >
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[#D8BE8A]/78">
+          {place.number} / {countryName} Route
+        </p>
+        <h4 className="mt-2 font-serif text-2xl leading-none text-[#F5F1E8] sm:text-3xl">
+          {place.name}
+        </h4>
+        <p className="mt-3 text-sm leading-6 text-[#D9D0C2]">
+          {place.description}
+        </p>
+      </div>
     </article>
   );
 }
 
-function PlaceImage({ place }: { place: CuratedPlace }) {
-  return (
-    <figure
-      className="relative min-h-[280px] overflow-hidden bg-[#e8d8cf] shadow-2xl shadow-[#b99686]/20 sm:min-h-[350px] lg:min-h-[390px]"
-      style={{
-        clipPath:
-          place.align === "left"
-            ? "polygon(0 11%, 9% 3%, 36% 0, 76% 4%, 100% 15%, 95% 83%, 74% 94%, 33% 100%, 8% 91%, 0 70%)"
-            : "polygon(7% 5%, 34% 0, 77% 3%, 100% 12%, 96% 75%, 84% 91%, 50% 100%, 13% 95%, 0 82%, 4% 24%)",
-      }}
-    >
-      <Image
-        alt={place.imageAlt}
-        className="absolute inset-0 h-full w-full object-cover"
-        fill
-        sizes="(min-width: 1024px) 32vw, (min-width: 768px) 45vw, calc(100vw - 40px)"
-        src={place.image}
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(251,248,242,0.02),rgba(87,68,60,0.2))]" />
-    </figure>
-  );
-}
+function CountryRouteLine({ placesCount }: { placesCount: number }) {
+  const height = placesCount > 3 ? 820 : 620;
 
-function PlaceCopy({ place }: { place: CuratedPlace }) {
-  return (
-    <div className="max-w-sm">
-      <p className="text-xs uppercase tracking-[0.28em] text-[#c09886]">
-        {place.number} / Curated Place
-      </p>
-      <h4 className="mt-3 font-serif text-4xl leading-none text-[#5a4740] sm:text-[2.65rem]">
-        {place.name}
-      </h4>
-      <p className="mt-4 text-sm leading-7 text-[#745f57]">
-        {place.description}
-      </p>
-    </div>
-  );
-}
-
-function RouteLine() {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute left-0 top-8 z-0 hidden h-[1260px] w-full text-[#c8a598] opacity-70 md:block"
+      className="pointer-events-none absolute left-0 top-6 z-0 hidden w-full text-[#D8BE8A] opacity-40 lg:block"
       fill="none"
       preserveAspectRatio="none"
-      viewBox="0 0 780 1260"
+      style={{ height }}
+      viewBox="0 0 820 820"
     >
       <path
-        d="M92 118 C 248 26, 488 46, 620 164 C 734 266, 650 382, 490 398 C 310 416, 166 350, 102 486 C 32 634, 248 746, 476 702 C 680 662, 736 802, 594 928 C 474 1034, 278 988, 164 1110"
+        d={
+          placesCount > 3
+            ? "M118 72 C 280 18, 510 58, 610 174 C 696 274, 548 338, 388 326 C 208 312, 98 408, 188 526 C 286 648, 552 612, 642 744"
+            : "M118 72 C 280 18, 510 58, 610 174 C 696 274, 548 338, 388 326 C 208 312, 98 408, 188 526"
+        }
         stroke="currentColor"
-        strokeDasharray="3 9"
+        strokeDasharray="4 11"
         strokeLinecap="round"
-        strokeWidth="1.25"
+        strokeWidth="1.35"
       />
-      <circle cx="92" cy="118" fill="#b87666" r="3" />
-      <circle cx="490" cy="398" fill="#b87666" r="3" />
-      <circle cx="476" cy="702" fill="#b87666" r="3" />
-      <circle cx="164" cy="1110" fill="#b87666" r="3" />
+      <circle cx="118" cy="72" fill="#D8BE8A" r="3.5" />
+      <circle cx="388" cy="326" fill="#D8BE8A" r="3.5" />
+      <circle cx="188" cy="526" fill="#D8BE8A" r="3.5" />
+      {placesCount > 3 ? <circle cx="642" cy="744" fill="#D8BE8A" r="3.5" /> : null}
     </svg>
   );
 }
 
-const monthlyFeature = {
+type MonthlyFeature = {
+  month: string;
+  year: string;
+  description: string;
+};
+
+const fallbackMonthlyFeature: MonthlyFeature = {
   month: "August",
   year: "2026",
   description:
     "Three destinations selected for one clear reason this month: scenery, value, or a cultural moment worth planning around.",
 };
 
-const featuredCountries: FeaturedCountry[] = [
+const augustFeaturedCountryIds = ["iceland", "guatemala", "spain"] as const;
+
+const fallbackFeaturedCountries: FeaturedCountry[] = [
   {
     country: "Iceland",
     id: "iceland",
-    month: monthlyFeature.month,
-    year: monthlyFeature.year,
+    month: fallbackMonthlyFeature.month,
+    year: fallbackMonthlyFeature.year,
     featuredCategory: "Scenic Beauty",
     featuredHeadline:
       "Long daylight, open roads, and landscapes at their most reachable",
@@ -355,28 +376,6 @@ const featuredCountries: FeaturedCountry[] = [
       },
       {
         number: "02",
-        name: "Thorsmork",
-        shortName: "Thorsmork",
-        description:
-          "Glacial valleys, dark ridges, and lush summer trails create a wilder scenic chapter between mountains and ice.",
-        image:
-          "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=86",
-        imageAlt: "Green mountain valley with dramatic peaks",
-        align: "right",
-      },
-      {
-        number: "03",
-        name: "Westfjords",
-        shortName: "Westfjords",
-        description:
-          "Remote fjords, cliffs, and quiet coastlines give Iceland's August scenery a more spacious, less expected edge.",
-        image:
-          "https://images.unsplash.com/photo-1531168556467-80aace0d0144?auto=format&fit=crop&w=1400&q=86",
-        imageAlt: "Remote northern coastline and cliffs",
-        align: "left",
-      },
-      {
-        number: "04",
         name: "South Coast",
         shortName: "South Coast",
         description:
@@ -386,14 +385,25 @@ const featuredCountries: FeaturedCountry[] = [
         imageAlt: "Icelandic black sand coast with dramatic mountains",
         align: "right",
       },
+      {
+        number: "03",
+        name: "Porsmork",
+        shortName: "Porsmork",
+        description:
+          "Glacial valleys, dark ridges, and lush summer trails create a wilder scenic chapter between mountains and ice.",
+        image:
+          "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=86",
+        imageAlt: "Green mountain valley with dramatic peaks",
+        align: "left",
+      },
     ],
     detailPage: "/explore/iceland",
   },
   {
     country: "Guatemala",
     id: "guatemala",
-    month: monthlyFeature.month,
-    year: monthlyFeature.year,
+    month: fallbackMonthlyFeature.month,
+    year: fallbackMonthlyFeature.year,
     featuredCategory: "Budget-Friendly",
     featuredHeadline:
       "Rich culture and big landscapes with strong travel value",
@@ -416,8 +426,8 @@ const featuredCountries: FeaturedCountry[] = [
       },
       {
         number: "02",
-        name: "Lake Atitlan",
-        shortName: "Lake Atitlan",
+        name: "Lake Atitlán",
+        shortName: "Lake Atitlán",
         description:
           "Lakefront villages, boat days, and volcano views create a slower August rhythm with strong value for longer stays.",
         image:
@@ -453,8 +463,8 @@ const featuredCountries: FeaturedCountry[] = [
   {
     country: "Spain",
     id: "spain",
-    month: monthlyFeature.month,
-    year: monthlyFeature.year,
+    month: fallbackMonthlyFeature.month,
+    year: fallbackMonthlyFeature.year,
     featuredCategory: "Major Festival / Event",
     featuredHeadline:
       "A month shaped by one of Europe's biggest street celebrations",
@@ -466,8 +476,8 @@ const featuredCountries: FeaturedCountry[] = [
     places: [
       {
         number: "01",
-        name: "Bunol",
-        shortName: "Bunol",
+        name: "Buñol",
+        shortName: "Buñol",
         description:
           "La Tomatina on 26 August 2026 gives Spain a specific, high-energy reason to anchor an August trip.",
         image:
@@ -480,7 +490,7 @@ const featuredCountries: FeaturedCountry[] = [
         name: "Valencia",
         shortName: "Valencia",
         description:
-          "Valencia adds the broader city rhythm around Bunol: Mediterranean evenings, food culture, and easy event access.",
+          "Valencia adds the broader city rhythm around Buñol: Mediterranean evenings, food culture, and easy event access.",
         image:
           "https://images.unsplash.com/photo-1606768666853-403c90a981ad?auto=format&fit=crop&w=1400&q=86",
         imageAlt: "Valencia architecture and reflecting water",
@@ -488,10 +498,10 @@ const featuredCountries: FeaturedCountry[] = [
       },
       {
         number: "03",
-        name: "Malaga",
-        shortName: "Malaga",
+        name: "Málaga",
+        shortName: "Málaga",
         description:
-          "Feria de Malaga brings a second August festival mood, with city streets, music, and coastal summer energy.",
+          "Feria de Málaga brings a second August festival mood, with city streets, music, and coastal summer energy.",
         image:
           "https://images.unsplash.com/photo-1558642084-fd07fae5282e?auto=format&fit=crop&w=1400&q=86",
         imageAlt: "Warm Spanish city street with festive lights",
@@ -512,3 +522,125 @@ const featuredCountries: FeaturedCountry[] = [
     detailPage: "/explore/spain",
   },
 ];
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function getMonthName(month: number) {
+  return monthNames[month - 1] ?? fallbackMonthlyFeature.month;
+}
+
+function formatRank(rank: number) {
+  return String(rank).padStart(2, "0");
+}
+
+function getVisiblePlaces(country: FeaturedCountry) {
+  if (country.id !== "iceland") {
+    return country.places;
+  }
+
+  return country.places.slice(0, 3);
+}
+
+function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | null) {
+  if (!snapshot?.destinations?.length) {
+    return {
+      countries: fallbackFeaturedCountries,
+      monthlyFeature: fallbackMonthlyFeature,
+    };
+  }
+
+  const fallbackBySlug = new Map(
+    fallbackFeaturedCountries.map((country) => [country.id, country]),
+  );
+  const backendDestinationBySlug = new Map(
+    snapshot.destinations.map((destination) => [
+      destination.country_slug,
+      destination,
+    ]),
+  );
+  const month = getMonthName(snapshot.month);
+  const year = String(snapshot.year);
+  const countries = augustFeaturedCountryIds.map((countryId) => {
+    const fallback = fallbackBySlug.get(countryId);
+    const destination = backendDestinationBySlug.get(countryId);
+
+    if (!fallback) {
+      throw new Error(`Missing fallback destination for ${countryId}`);
+    }
+
+    if (!destination) {
+      return {
+        ...fallback,
+        month,
+        year,
+      };
+    }
+
+    if (countryId === "iceland") {
+      return {
+        ...fallback,
+        country: destination.country_name ?? fallback.country,
+        month,
+        year,
+        featuredCategory: `Rank ${formatRank(destination.rank)} / Score ${destination.final_score}`,
+        whyThisMonth: `${destination.recommendation_reason} Recommendation score: ${destination.final_score}.`,
+      };
+    }
+
+    const fallbackPlacesBySlug = new Map(
+      fallback.places.map((place) => [
+        place.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+        place,
+      ]),
+    );
+
+    return {
+      ...fallback,
+      country: destination.country_name ?? fallback.country,
+      month,
+      year,
+      featuredCategory: `Rank ${formatRank(destination.rank)} / Score ${destination.final_score}`,
+      whyThisMonth: `${destination.recommendation_reason} Recommendation score: ${destination.final_score}.`,
+      places: destination.selected_places.map((place, index) => {
+        const placeSlug = place.place_slug;
+        const fallbackPlace = fallbackPlacesBySlug.get(placeSlug) ?? fallback.places[index];
+
+        return {
+          ...(fallbackPlace ?? {
+            image:
+              "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=86",
+            imageAlt: `${place.place_name ?? place.place_slug} travel scene`,
+            align: index % 2 === 0 ? "left" : "right",
+          }),
+          number: formatRank(place.rank),
+          name: place.place_name ?? fallbackPlace?.name ?? place.place_slug,
+          shortName: place.place_name ?? fallbackPlace?.shortName ?? place.place_slug,
+          description: `${place.recommendation_reason} Score: ${place.score}.`,
+        };
+      }),
+    };
+  });
+
+  return {
+    countries,
+    monthlyFeature: {
+      month,
+      year,
+      description:
+        "Destinations selected from the latest CoVoyage monthly recommendation snapshot.",
+    },
+  };
+}

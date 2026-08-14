@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function JapanExploreRoute() {
   return (
-    <div className="min-h-screen bg-[#fbf8f2] text-stone-900">
+    <div className="min-h-screen bg-[#0B0B0C] text-[#F5F1E8]">
       <Navbar />
       <DestinationPage destination={destinations.japan} />
       <Footer />

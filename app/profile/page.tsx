@@ -2,12 +2,13 @@
 
 import { Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { Footer } from "@/components/layout/Footer";
+import { Navbar } from "@/components/layout/Navbar";
 import { ContentCard } from "@/components/shared/ContentCard";
 import { FormField } from "@/components/shared/FormField";
-import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
 import {
   ApiError,
@@ -50,6 +51,7 @@ type TravelProfile = Omit<
   | "previously_visited_countries"
 > & {
   user_id?: string;
+  tribe_discoverable?: boolean;
   age: number | null;
   preferred_destinations?: string[] | null;
   interests?: string[] | null;
@@ -67,9 +69,15 @@ type ProfileSaveResponse = {
   profile: TravelProfile;
 };
 
-const PROFILE_SAVE_SUCCESS_MESSAGE = "✅ Travel Profile Updated Successfully!";
+const PROFILE_SAVE_SUCCESS_MESSAGE = "Profile updated successfully.";
 const SUCCESS_VISIBLE_DURATION_MS = 3000;
 const SUCCESS_CLEAR_DURATION_MS = 3400;
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const SUPPORTED_PROFILE_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 type ProfileCompleteness = {
   complete: boolean;
@@ -298,6 +306,12 @@ const sections: {
   },
 ];
 
+const darkCardClass =
+  "border-white/10 bg-white/[0.035] text-[#f8f4ea] shadow-2xl shadow-black/20";
+
+const darkFormClass =
+  "grid gap-6 [&_label]:text-white/72 [&_input]:border-white/10 [&_input]:bg-black/35 [&_input]:text-white [&_input]:placeholder:text-white/34 [&_input]:focus:border-white/32 [&_input]:focus:ring-white/10 [&_select]:border-white/10 [&_select]:bg-black/35 [&_select]:text-white [&_select]:focus:border-white/32 [&_select]:focus:ring-white/10 [&_textarea]:border-white/10 [&_textarea]:bg-black/35 [&_textarea]:text-white [&_textarea]:placeholder:text-white/34 [&_textarea]:focus:border-white/32 [&_textarea]:focus:ring-white/10";
+
 const listFields = new Set([
   "preferred_destinations",
   "interests",
@@ -432,10 +446,12 @@ function toNullableString(value: string) {
 function formToPayload(
   formData: ProfileFormData,
   enumOptions?: ProfileEnumOptions | null,
+  tribeDiscoverable = false,
 ) {
   const normalizedFormData = normalizeProfileEnumFields(formData, enumOptions);
 
   return {
+    tribe_discoverable: tribeDiscoverable,
     name: normalizedFormData.name,
     username: normalizedFormData.username,
     age: normalizedFormData.age ? Number(normalizedFormData.age) : null,
@@ -902,6 +918,8 @@ function formatMissingField(fieldName: string) {
 export default function ProfilePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<ProfileFormData>(emptyProfile);
+  const [selectedProfileImageUrl, setSelectedProfileImageUrl] = useState("");
+  const [profileImageError, setProfileImageError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSuccessVisible, setIsSuccessVisible] = useState(false);
@@ -910,17 +928,32 @@ export default function ProfilePage() {
     useState<ProfileOptionsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTribeSaving, setIsTribeSaving] = useState(false);
+  const [tribeDiscoverable, setTribeDiscoverable] = useState(false);
   const [pendingIncompleteSave, setPendingIncompleteSave] =
     useState<ProfileCompleteness | null>(null);
+  const profileImageInputRef = useRef<HTMLInputElement | null>(null);
+  const previewImageUrlRef = useRef<string | null>(null);
   const token = useMemo(() => getValidAuthToken(), []);
+  const displayedProfileImageUrl =
+    selectedProfileImageUrl || formData.profile_picture_url;
+
+  useEffect(() => {
+    return () => {
+      if (previewImageUrlRef.current) {
+        URL.revokeObjectURL(previewImageUrlRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!success) {
       return;
     }
 
-    setIsSuccessVisible(true);
-
+    const showTimer = window.setTimeout(() => {
+      setIsSuccessVisible(true);
+    }, 0);
     const fadeTimer = window.setTimeout(() => {
       setIsSuccessVisible(false);
     }, SUCCESS_VISIBLE_DURATION_MS);
@@ -929,6 +962,7 @@ export default function ProfilePage() {
     }, SUCCESS_CLEAR_DURATION_MS);
 
     return () => {
+      window.clearTimeout(showTimer);
       window.clearTimeout(fadeTimer);
       window.clearTimeout(clearTimer);
     };
@@ -956,6 +990,7 @@ export default function ProfilePage() {
 
         if (response.profile) {
           setFormData(profileToForm(response.profile, optionsResponse.enum_options));
+          setTribeDiscoverable(response.profile.tribe_discoverable === true);
           setFieldErrors({});
           return;
         }
@@ -966,12 +1001,13 @@ export default function ProfilePage() {
           {
             method: "PUT",
             token,
-            body: JSON.stringify(
-              formToPayload(defaultProfile, optionsResponse.enum_options),
+          body: JSON.stringify(
+              formToPayload(defaultProfile, optionsResponse.enum_options, false),
             ),
           },
         );
 
+        setTribeDiscoverable(createdProfile.profile.tribe_discoverable === true);
         setFormData(
           profileToForm(createdProfile.profile, optionsResponse.enum_options),
         );
@@ -1114,6 +1150,42 @@ export default function ProfilePage() {
     }
   };
 
+  const handleProfileImageSelect = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (
+      !file.type.startsWith("image/") ||
+      !SUPPORTED_PROFILE_IMAGE_TYPES.has(file.type)
+    ) {
+      setProfileImageError("Choose a JPG, PNG, or WEBP image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
+      setProfileImageError("Choose an image smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+
+    if (previewImageUrlRef.current) {
+      URL.revokeObjectURL(previewImageUrlRef.current);
+    }
+
+    previewImageUrlRef.current = nextPreviewUrl;
+    setSelectedProfileImageUrl(nextPreviewUrl);
+    setProfileImageError("");
+    event.target.value = "";
+  };
+
   const saveProfile = async (confirmIncomplete: boolean) => {
     if (!token) {
       router.push("/login");
@@ -1136,7 +1208,13 @@ export default function ProfilePage() {
         {
           method: "PUT",
           token,
-          body: JSON.stringify(formToPayload(formData, profileOptions?.enum_options)),
+          body: JSON.stringify(
+            formToPayload(
+              formData,
+              profileOptions?.enum_options,
+              tribeDiscoverable,
+            ),
+          ),
         },
       );
 
@@ -1146,6 +1224,7 @@ export default function ProfilePage() {
       const savedProfile = refreshedProfile.profile || response.profile;
 
       setFormData(profileToForm(savedProfile, profileOptions?.enum_options));
+      setTribeDiscoverable(savedProfile.tribe_discoverable === true);
       setFieldErrors({});
       setPendingIncompleteSave(null);
       setSuccess(PROFILE_SAVE_SUCCESS_MESSAGE);
@@ -1197,17 +1276,72 @@ export default function ProfilePage() {
     await saveProfile(true);
   };
 
+  const handleTribeDiscoverableChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    const nextValue = event.target.checked;
+    const previousValue = tribeDiscoverable;
+
+    setTribeDiscoverable(nextValue);
+    setIsTribeSaving(true);
+    setError("");
+
+    try {
+      const response = await apiRequest<ProfileResponse>(
+        "/profile/tribe-discoverable",
+        {
+          method: "PATCH",
+          token,
+          body: JSON.stringify({ tribe_discoverable: nextValue }),
+        },
+      );
+
+      setTribeDiscoverable(response.profile?.tribe_discoverable === true);
+    } catch (caughtError) {
+      setTribeDiscoverable(previousValue);
+
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        clearAuth();
+        router.push("/login");
+        return;
+      }
+
+      setError(
+        caughtError instanceof ApiError
+          ? caughtError.detail
+          : "Unable to update Tribe matching setting.",
+      );
+    } finally {
+      setIsTribeSaving(false);
+    }
+  };
+
   return (
     <AuthGuard>
-      <PageShell
-        description="A permanent travel profile for the details that rarely change, ready for future matching and planning."
-        eyebrow="Travel profile"
-        title="Your CoVoyage Passport"
-      >
+      <div className="min-h-screen bg-[#050505] text-[#f8f4ea]">
+        <Navbar />
+        <main className="relative bg-[#050505]">
+          <section className="mx-auto max-w-7xl px-5 pb-10 pt-16 text-center sm:px-8">
+            <p className="mb-4 text-xs font-medium uppercase tracking-[0.38em] text-white/45">
+              Travel profile
+            </p>
+            <h1 className="mx-auto max-w-4xl font-serif text-5xl leading-tight text-white sm:text-6xl">
+              Your CoVoyage Passport
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-white/62">
+              A permanent travel profile for the details that rarely change,
+              ready for future matching and planning.
+            </p>
+          </section>
         {success ? (
           <div className="pointer-events-none fixed left-0 right-0 top-24 z-50 px-5 sm:px-8">
             <p
-              className={`mx-auto max-w-2xl rounded-[4px] border border-green-200 bg-green-50 px-4 py-3 text-center text-sm font-medium text-green-700 shadow-lg shadow-stone-900/5 transition-opacity duration-300 ${
+              className={`mx-auto max-w-2xl rounded-[4px] border border-green-400/30 bg-green-950/40 px-4 py-3 text-center text-sm font-medium text-green-100 shadow-lg shadow-black/20 transition-opacity duration-300 ${
                 isSuccessVisible ? "opacity-100" : "opacity-0"
               }`}
               role="status"
@@ -1218,22 +1352,22 @@ export default function ProfilePage() {
           </div>
         ) : null}
         {pendingIncompleteSave ? (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/40 px-5">
-            <div className="w-full max-w-lg rounded-[8px] border border-stone-200 bg-white p-6 shadow-xl">
-              <h2 className="font-serif text-3xl text-stone-900">
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-5">
+            <div className="w-full max-w-lg rounded-[8px] border border-white/10 bg-[#101010] p-6 shadow-xl shadow-black/40">
+              <h2 className="font-serif text-3xl text-white">
                 Profile incomplete
               </h2>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
+              <p className="mt-3 text-sm leading-6 text-white/62">
                 Your profile is incomplete. You can save your progress, but you
                 will not be able to use Find Your Tribe until all required
                 fields are completed.
               </p>
               {pendingIncompleteSave.missing_fields.length ? (
-                <div className="mt-5 rounded-[4px] border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-stone-500">
+                <div className="mt-5 rounded-[4px] border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/42">
                     Required for matching
                   </p>
-                  <ul className="mt-3 grid gap-2 text-sm text-stone-700 sm:grid-cols-2">
+                  <ul className="mt-3 grid gap-2 text-sm text-white/70 sm:grid-cols-2">
                     {pendingIncompleteSave.missing_fields.map((fieldName) => (
                       <li key={fieldName}>{formatMissingField(fieldName)}</li>
                     ))}
@@ -1242,6 +1376,7 @@ export default function ProfilePage() {
               ) : null}
               <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button
+                  className="border-white/18 bg-transparent text-white hover:bg-white/10"
                   disabled={isSaving}
                   type="button"
                   variant="outline"
@@ -1250,6 +1385,7 @@ export default function ProfilePage() {
                   Cancel
                 </Button>
                 <Button
+                  className="bg-[#f8f4ea] text-black hover:bg-white"
                   disabled={isSaving}
                   type="button"
                   onClick={handleSaveIncompleteProfile}
@@ -1262,32 +1398,95 @@ export default function ProfilePage() {
         ) : null}
         <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-            <ContentCard className="h-fit text-center">
-              <div className="mx-auto grid h-36 w-36 place-items-center rounded-full border border-dashed border-stone-300 bg-[#f4eee4] text-stone-500">
-                <Camera className="h-8 w-8" />
-              </div>
-              <h2 className="mt-6 font-serif text-3xl text-stone-900">
-                Profile Picture
+            <ContentCard className={`${darkCardClass} h-fit text-center lg:sticky lg:top-28 lg:self-start`}>
+              <input
+                ref={profileImageInputRef}
+                accept="image/*"
+                className="sr-only"
+                type="file"
+                onChange={handleProfileImageSelect}
+              />
+              <button
+                aria-label={
+                  displayedProfileImageUrl
+                    ? "Change profile picture"
+                    : "Select profile picture"
+                }
+                className="group relative mx-auto grid h-36 w-36 place-items-center overflow-hidden rounded-full border border-dashed border-white/18 bg-black/35 text-white/45 transition duration-200 hover:border-white/35 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f8f4ea]"
+                disabled={isSaving}
+                type="button"
+                onClick={() => profileImageInputRef.current?.click()}
+              >
+                {displayedProfileImageUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt="Selected profile picture"
+                      className="h-full w-full object-cover"
+                      src={displayedProfileImageUrl}
+                    />
+                    <span className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-medium uppercase tracking-[0.22em] text-white opacity-0 transition duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+                      Change
+                    </span>
+                  </>
+                ) : (
+                  <Camera className="h-8 w-8" />
+                )}
+              </button>
+              <h2 className="mt-6 font-serif text-3xl text-white">
+                {displayedProfileImageUrl ? "Change Photo" : "Profile Picture"}
               </h2>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
-                Placeholder upload area for a future profile photo.
+              <p className="mt-3 text-sm leading-6 text-white/58">
+                {displayedProfileImageUrl
+                  ? "Click the photo to choose a different image."
+                  : "Click to choose a profile photo from your device."}
               </p>
+              {profileImageError ? (
+                <p className="mt-3 rounded-[4px] border border-red-400/30 bg-red-950/30 px-3 py-2 text-sm text-red-100">
+                  {profileImageError}
+                </p>
+              ) : null}
             </ContentCard>
 
-            <form className="grid gap-6" noValidate onSubmit={handleSubmit}>
+            <form className={darkFormClass} noValidate onSubmit={handleSubmit}>
               {error ? (
-                <p className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <p className="rounded-[4px] border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm text-red-100">
                   {error}
                 </p>
               ) : null}
               {isLoading ? (
-                <ContentCard>
-                  <p className="text-sm text-stone-600">Loading profile...</p>
+                <ContentCard className={darkCardClass}>
+                  <p className="text-sm text-white/58">Loading profile...</p>
                 </ContentCard>
               ) : (
-                sections.map((section) => (
-                  <ContentCard key={section.title}>
-                    <h2 className="font-serif text-3xl text-stone-900">
+                <>
+                  <ContentCard className={darkCardClass}>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h2 className="font-serif text-3xl text-white">
+                          Find Your Tribe
+                        </h2>
+                        <p className="mt-3 text-sm leading-6 text-white/62">
+                          Allow CoVoyage to use your travel profile to find
+                          compatible co-travellers and show your profile to
+                          relevant Tribe matches.
+                        </p>
+                      </div>
+                      <label className="flex shrink-0 cursor-pointer items-center gap-3 text-sm font-medium text-white/72">
+                        <span>Appear in Tribe matching</span>
+                        <input
+                          checked={tribeDiscoverable}
+                          className="h-5 w-5 accent-[#f8f4ea]"
+                          disabled={isSaving || isTribeSaving}
+                          type="checkbox"
+                          onChange={handleTribeDiscoverableChange}
+                        />
+                      </label>
+                    </div>
+                  </ContentCard>
+                  {sections.map((section) => (
+                  <ContentCard className={darkCardClass} key={section.title}>
+                    <h2 className="font-serif text-3xl text-white">
                       {section.title}
                     </h2>
                     <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -1341,28 +1540,28 @@ export default function ProfilePage() {
                       ) : null}
                       {section.title === "Default Travel Preferences" ? (
                         <div className="sm:col-span-2">
-                          <p className="text-sm font-medium text-stone-700">
+                          <p className="text-sm font-medium text-white/72">
                             Favourite Interests
                           </p>
                           <div className="mt-3 grid gap-4">
                             {Object.entries(interestTagCategories).map(
                               ([category, tags]) => (
                                 <fieldset
-                                  className="rounded-[4px] border border-stone-200 bg-white/60 p-4"
+                                  className="rounded-[4px] border border-white/10 bg-black/25 p-4"
                                   key={category}
                                 >
-                                  <legend className="px-1 text-xs font-medium uppercase tracking-[0.22em] text-stone-500">
+                                  <legend className="px-1 text-xs font-medium uppercase tracking-[0.22em] text-white/42">
                                     {category}
                                   </legend>
                                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                     {tags.map((tag) => (
                                       <label
-                                        className="flex items-center gap-2 text-sm text-stone-700"
+                                        className="flex items-center gap-2 text-sm text-white/70"
                                         key={tag}
                                       >
                                         <input
                                           checked={toList(formData.interests).includes(tag)}
-                                          className="h-4 w-4 accent-stone-900"
+                                          className="h-4 w-4 accent-[#f8f4ea]"
                                           disabled={isSaving}
                                           type="checkbox"
                                           onChange={() => handleInterestToggle(tag)}
@@ -1376,7 +1575,7 @@ export default function ProfilePage() {
                             )}
                           </div>
                           {fieldErrors.interests ? (
-                            <p className="mt-3 text-sm text-red-700">
+                            <p className="mt-3 text-sm text-red-200">
                               {fieldErrors.interests}
                             </p>
                           ) : null}
@@ -1384,10 +1583,11 @@ export default function ProfilePage() {
                       ) : null}
                     </div>
                   </ContentCard>
-                ))
+                  ))}
+                </>
               )}
               <Button
-                className="w-fit"
+                className="w-fit bg-[#f8f4ea] text-black hover:bg-white"
                 disabled={isLoading || isSaving}
                 size="lg"
                 type="submit"
@@ -1397,7 +1597,9 @@ export default function ProfilePage() {
             </form>
           </div>
         </section>
-      </PageShell>
+        </main>
+        <Footer />
+      </div>
     </AuthGuard>
   );
 }

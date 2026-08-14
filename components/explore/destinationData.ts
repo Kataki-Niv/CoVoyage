@@ -26,6 +26,7 @@ export type LocalPhrase = {
   english: string;
   local: string;
   pronunciation?: string;
+  usageNote?: string;
 };
 
 export type JourneyFact = {
@@ -35,6 +36,7 @@ export type JourneyFact = {
 
 export type JourneyPlace = {
   number: string;
+  placeSlug?: string;
   name: string;
   region: string;
   story: string;
@@ -165,13 +167,13 @@ export const destinations: Record<DestinationKey, DestinationData> = {
       },
       {
         number: "02",
-        name: "Þórsmörk",
+        name: "Porsmork",
         region: "Glacial Valley",
         story:
           "A dramatic valley framed by glaciers and mountains, where summer hiking turns Iceland's scale into something you can feel on foot.",
         image:
-          "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=86",
-        imageAlt: "Green mountain valley with dramatic peaks",
+          "https://i.pinimg.com/1200x/8b/23/11/8b2311edf1ff0293d24082602777a7eb.jpg",
+        imageAlt: "Mount Fuji reflected in a lake at sunset",
         align: "right",
         facts: [
           { label: "Why Visit", value: "Valleys, glaciers, and trail views" },
@@ -188,7 +190,7 @@ export const destinations: Record<DestinationKey, DestinationData> = {
           {
             quote:
               "Book a proper Highlands bus or guided transfer. The river crossings are not casual rental-car territory.",
-            location: "Þórsmörk",
+            location: "Porsmork",
             traveler: "Katrin, hiking host",
             rating: "4.9",
           },
@@ -318,7 +320,7 @@ export const destinations: Record<DestinationKey, DestinationData> = {
       {
         title: "F-roads aren't normal roads",
         content:
-          "Iceland's Highland F-roads are a different category of road from the normal routes around the country. Some are rough, some involve river crossings, and different roads have different vehicle requirements. For the Iceland Highlands, travelers should check whether their specific vehicle is suitable for the specific F-road they intend to use. This is particularly relevant to Landmannalaugar and Þórsmörk.",
+          "Iceland's Highland F-roads are a different category of road from the normal routes around the country. Some are rough, some involve river crossings, and different roads have different vehicle requirements. For the Iceland Highlands, travelers should check whether their specific vehicle is suitable for the specific F-road they intend to use. This is particularly relevant to Landmannalaugar and Porsmork.",
       },
       {
         title: "A river crossing is a real decision",

@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { HistoryBackButton } from "@/components/shared/HistoryBackButton";
 
 import { getJournalPost, journalPosts } from "../journalData";
 
@@ -57,17 +58,15 @@ export default async function JournalArticlePage({
         <article>
           <header className="px-5 pb-10 pt-10 sm:px-8 lg:pb-14">
             <div className="mx-auto max-w-7xl">
-              <Link
+              <HistoryBackButton
                 className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-stone-600 transition-colors hover:text-stone-950"
-                href="/journal/blogs"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Blogs
-              </Link>
+                Back to Journal
+              </HistoryBackButton>
               <div className="mt-8 grid gap-9 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] lg:items-end">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.34em] text-stone-500">
-                    {post.category}
+                    {post.type}
                   </p>
                   <h1 className="mt-4 font-serif text-5xl leading-tight text-stone-950 sm:text-6xl">
                     {post.title}
@@ -156,7 +155,7 @@ export default async function JournalArticlePage({
               </div>
               <Link
                 className="inline-flex w-fit items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-600 hover:text-stone-950"
-                href="/journal/blogs"
+                href="/journal"
               >
                 View Feed
                 <ArrowRight className="h-4 w-4" />
@@ -170,7 +169,7 @@ export default async function JournalArticlePage({
                   key={morePost.slug}
                 >
                   <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-stone-500">
-                    {morePost.category}
+                    {morePost.type}
                   </p>
                   <h3 className="mt-3 font-serif text-2xl leading-tight text-stone-950 group-hover:text-stone-700">
                     {morePost.title}

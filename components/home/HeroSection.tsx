@@ -32,8 +32,8 @@ export function HeroSection() {
           src="/covoyage-reference-hero-bg.jpg"
         />
       </motion.div>
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.44)_0%,rgba(0,0,0,0.18)_42%,rgba(0,0,0,0)_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[46%] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(5,5,5,0.72)_58%,#050505_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.32)_0%,rgba(0,0,0,0.12)_42%,rgba(0,0,0,0)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[46%] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(5,5,5,0.58)_58%,#050505_100%)]" />
 
       <motion.div
         animate="visible"

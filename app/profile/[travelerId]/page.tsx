@@ -1,14 +1,13 @@
 "use client";
 
-import { ArrowLeft, CalendarDays, Camera, Globe2, MapPin } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, MapPin } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { ContentCard } from "@/components/shared/ContentCard";
-import { PageShell } from "@/components/shared/PageShell";
+import { Footer } from "@/components/layout/Footer";
+import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { ApiError, apiRequest, clearAuth, getValidAuthToken } from "@/lib/api";
 
@@ -16,9 +15,6 @@ type PublicTravelProfile = {
   user_id: string;
   name?: string;
   username?: string;
-  age?: number | null;
-  gender?: string | null;
-  preferred_travel_gender?: string | null;
   bio?: string | null;
   profile_picture_url?: string | null;
   travel_style?: string | null;
@@ -31,10 +27,6 @@ type PublicTravelProfile = {
   languages_spoken?: string[];
   country?: string | null;
   city?: string | null;
-  previously_visited_countries?: string[];
-  linkedin?: string | null;
-  instagram?: string | null;
-  personal_website?: string | null;
 };
 
 type PublicProfileResponse = {
@@ -68,7 +60,7 @@ function ProfilePhoto({
 
   if (!imageUrl || imageFailed) {
     return (
-      <div className="mx-auto grid h-36 w-36 place-items-center rounded-full border border-dashed border-stone-300 bg-[#f4eee4] text-stone-500">
+      <div className="mx-auto grid h-36 w-36 place-items-center rounded-full border border-dashed border-white/18 bg-white/[0.04] text-white/45">
         <Camera className="h-8 w-8" />
       </div>
     );
@@ -96,8 +88,8 @@ function DetailItem({
 }) {
   return (
     <div>
-      <dt className="text-sm font-medium text-stone-800">{label}</dt>
-      <dd className="mt-1 text-sm leading-6 text-stone-600">
+      <dt className="text-xs font-medium uppercase tracking-[0.22em] text-white/38">{label}</dt>
+      <dd className="mt-2 text-sm leading-6 text-white/68">
         {value || "Not specified"}
       </dd>
     </div>
@@ -162,88 +154,95 @@ export default function PublicProfilePage() {
 
   return (
     <AuthGuard>
-      <PageShell
-        description="A read-only travel profile for reviewing a potential CoVoyage companion."
-        eyebrow="Traveler profile"
-        title={displayName}
-      >
-        <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
-          <Button asChild className="mb-6 w-fit" variant="outline">
-            <Link href="/tribe">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Tribe
-            </Link>
+      <div className="min-h-screen bg-[#050505] text-[#f8f4ea]">
+        <Navbar />
+        <main className="overflow-hidden bg-[#050505]">
+          <section className="mx-auto max-w-7xl px-5 pb-10 pt-16 text-center sm:px-8">
+            <p className="mb-4 text-xs font-medium uppercase tracking-[0.38em] text-white/42">
+              Traveler profile
+            </p>
+            <h1 className="mx-auto max-w-4xl font-serif text-5xl leading-tight text-white sm:text-6xl">
+              {displayName}
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-white/62">
+              A read-only travel profile for reviewing a potential CoVoyage companion.
+            </p>
+          </section>
+
+          <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
+          <Button
+            className="mb-6 w-fit border-white/16 bg-transparent text-white hover:bg-white/10"
+            onClick={() => router.back()}
+            type="button"
+            variant="outline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Tribe
           </Button>
 
           {error ? (
-            <p className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm text-red-100">
               {error}
             </p>
           ) : null}
 
           {isLoading ? (
-            <ContentCard>
-              <p className="text-sm text-stone-600">Loading profile...</p>
-            </ContentCard>
+            <section className="border border-white/10 bg-white/[0.035] p-6">
+              <p className="text-sm text-white/58">Loading profile...</p>
+            </section>
           ) : null}
 
           {!isLoading && !error && profile ? (
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-              <ContentCard className="h-fit text-center">
+              <section className="h-fit border border-white/10 bg-white/[0.035] p-6 text-center shadow-2xl shadow-black/20">
                 <ProfilePhoto
                   displayName={displayName}
                   imageUrl={profile.profile_picture_url}
                 />
-                <h2 className="mt-6 font-serif text-3xl text-stone-900">
+                <h2 className="mt-6 font-serif text-3xl text-white">
                   {displayName}
                 </h2>
                 {profile.username ? (
-                  <p className="mt-1 text-sm text-stone-500">
+                  <p className="mt-1 text-sm text-white/42">
                     @{profile.username}
                   </p>
                 ) : null}
                 {location ? (
-                  <p className="mt-4 flex items-center justify-center gap-2 text-sm text-stone-600">
+                  <p className="mt-4 flex items-center justify-center gap-2 text-sm text-white/58">
                     <MapPin className="h-4 w-4" />
                     {location}
                   </p>
                 ) : null}
-              </ContentCard>
+              </section>
 
               <div className="grid gap-6">
-                <ContentCard>
-                  <h2 className="font-serif text-3xl text-stone-900">
+                <section className="border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/20">
+                  <h2 className="font-serif text-3xl text-white">
                     About
                   </h2>
-                  <p className="mt-5 text-sm leading-7 text-stone-600">
+                  <p className="mt-5 text-sm leading-7 text-white/66">
                     {profile.bio || "This traveler has not added a bio yet."}
                   </p>
                   <dl className="mt-6 grid gap-5 sm:grid-cols-2">
-                    <DetailItem label="Age" value={profile.age} />
-                    <DetailItem label="Gender" value={profile.gender} />
-                    <DetailItem
-                      label="Preferred Gender to Travel With"
-                      value={profile.preferred_travel_gender}
-                    />
                     <DetailItem
                       label="Travel Style"
                       value={profile.travel_style}
                     />
                     <DetailItem label="Budget" value={profile.budget_range} />
                   </dl>
-                </ContentCard>
+                </section>
 
-                <ContentCard>
-                  <h2 className="font-serif text-3xl text-stone-900">
+                <section className="border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/20">
+                  <h2 className="font-serif text-3xl text-white">
                     Travel Plans
                   </h2>
                   <dl className="mt-6 grid gap-5 sm:grid-cols-2">
                     <div>
-                      <dt className="flex items-center gap-2 text-sm font-medium text-stone-800">
+                      <dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-white/38">
                         <CalendarDays className="h-4 w-4" />
                         Travel Dates
                       </dt>
-                      <dd className="mt-1 text-sm leading-6 text-stone-600">
+                      <dd className="mt-2 text-sm leading-6 text-white/68">
                         {formatTravelDates(
                           profile.available_from,
                           profile.available_to,
@@ -258,15 +257,11 @@ export default function PublicProfilePage() {
                       label="Preferred Destinations"
                       value={formatList(profile.preferred_destinations)}
                     />
-                    <DetailItem
-                      label="Previously Visited Countries"
-                      value={formatList(profile.previously_visited_countries)}
-                    />
                   </dl>
-                </ContentCard>
+                </section>
 
-                <ContentCard>
-                  <h2 className="font-serif text-3xl text-stone-900">
+                <section className="border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/20">
+                  <h2 className="font-serif text-3xl text-white">
                     Interests And Languages
                   </h2>
                   <dl className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -279,30 +274,14 @@ export default function PublicProfilePage() {
                       value={formatList(profile.languages_spoken)}
                     />
                   </dl>
-                </ContentCard>
-
-                <ContentCard>
-                  <h2 className="font-serif text-3xl text-stone-900">
-                    Links
-                  </h2>
-                  <dl className="mt-6 grid gap-5 sm:grid-cols-3">
-                    <DetailItem label="LinkedIn" value={profile.linkedin} />
-                    <DetailItem label="Instagram" value={profile.instagram} />
-                    <DetailItem
-                      label="Personal Website"
-                      value={profile.personal_website}
-                    />
-                  </dl>
-                  <p className="mt-6 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-stone-500">
-                    <Globe2 className="h-4 w-4" />
-                    Read-only public profile
-                  </p>
-                </ContentCard>
+                </section>
               </div>
             </div>
           ) : null}
         </section>
-      </PageShell>
+        </main>
+        <Footer />
+      </div>
     </AuthGuard>
   );
 }

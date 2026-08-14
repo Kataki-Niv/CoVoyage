@@ -1,10 +1,9 @@
-import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { HistoryBackButton } from "@/components/shared/HistoryBackButton";
 
 import { AddToBagButton } from "../AddToBagButton";
 import { getProduct, products } from "../productData";
@@ -51,13 +50,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <main>
         <section className="px-5 py-10 sm:px-8 lg:py-16">
           <div className="mx-auto max-w-7xl">
-            <Link
+            <HistoryBackButton
               className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-stone-600 transition-colors hover:text-stone-950"
-              href="/shop"
             >
-              <ArrowLeft className="h-4 w-4" />
               Back to Travel Essentials
-            </Link>
+            </HistoryBackButton>
 
             <div className="mt-8 grid gap-9 lg:grid-cols-[0.54fr_0.46fr] lg:items-start">
               <figure className="relative min-h-[420px] overflow-hidden border border-stone-200 bg-stone-200 lg:min-h-[650px]">

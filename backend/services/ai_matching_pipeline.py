@@ -14,6 +14,7 @@ from services.rule_based_matching import (
     has_overlapping_travel_dates,
     travel_gender_preferences_are_compatible,
 )
+from services.profile_privacy import is_tribe_discoverable
 from services.similarity_search import SimilarTraveler, find_similar_users_by_ids
 
 
@@ -170,7 +171,10 @@ def fetch_candidate_profiles(
 ) -> dict[str, dict[str, Any]]:
     try:
         candidate_profiles = profiles_collection.find(
-            {"user_id": {"$ne": current_user_id}}
+            {
+                "user_id": {"$ne": current_user_id},
+                "tribe_discoverable": True,
+            }
         )
     except Exception:
         logger.exception("Failed to load AI match candidate profiles from MongoDB")
@@ -243,7 +247,9 @@ def candidate_is_eligible_for_ai_matching(
     candidate_profile: dict[str, Any],
 ) -> bool:
     return (
-        travel_gender_preferences_are_compatible(
+        is_tribe_discoverable(current_profile)
+        and is_tribe_discoverable(candidate_profile)
+        and travel_gender_preferences_are_compatible(
             current_profile,
             candidate_profile,
         )

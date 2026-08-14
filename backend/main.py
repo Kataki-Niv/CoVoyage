@@ -1,16 +1,26 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 from pymongo.errors import DuplicateKeyError
 
-from models import PROFILE_ENUM_OPTIONS, TravelProfileUpsert, UserCreate, UserLogin
+from models import (
+    PROFILE_ENUM_OPTIONS,
+    TravelProfileUpsert,
+    TribeDiscoverabilityUpdate,
+    UserCreate,
+    UserLogin,
+)
 from auth import hash_password, verify_password
 from dependencies import get_current_user, get_profiles_or_503, get_users_or_503
 from jwt_handler import create_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from routers.blogs import router as blogs_router
 from routers.chats import router as chats_router
+from routers.community import router as community_router
+from routers.destinations import router as destinations_router
+from routers.events import router as events_router
 from routers.matches import router as matches_router
 from routers.trips import router as trips_router
 from services.profile_embedding_sync import synchronize_profile_embedding
+from services.ai_matching_pipeline import find_ai_profile_matches
 from services.profile_completeness import (
     REQUIRED_AI_MATCHING_FIELDS,
     evaluate_profile_completeness,
@@ -25,6 +35,11 @@ from services.account_identity import (
     is_username_available_for_registration,
 )
 from vector_store import fetch_profile_vector
+from services.profile_privacy import (
+    is_tribe_discoverable,
+    serialize_tribe_profile,
+    serialize_value,
+)
 
 
 PROFILE_RESPONSE_DEFAULTS = {
@@ -47,6 +62,7 @@ PROFILE_RESPONSE_DEFAULTS = {
     "personal_website": None,
     "available_from": None,
     "available_to": None,
+    "tribe_discoverable": False,
 }
 
 app = FastAPI()
@@ -62,6 +78,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(blogs_router)
+app.include_router(destinations_router)
+app.include_router(community_router)
+app.include_router(events_router)
 app.include_router(matches_router)
 app.include_router(trips_router)
 app.include_router(chats_router)
@@ -86,7 +105,7 @@ def serialize_profile(profile):
             default_value.copy() if isinstance(default_value, list) else default_value,
         )
 
-    return profile
+    return serialize_value(profile)
 
 
 def build_initial_profile(current_user):
@@ -96,8 +115,21 @@ def build_initial_profile(current_user):
             "name": current_user.get("name"),
             "username": current_user.get("username"),
             "email": current_user.get("email"),
+            "tribe_discoverable": False,
             "preferred_travel_gender": None,
         }
+    )
+
+
+def user_can_view_tribe_profile(current_profile, target_profile, profiles):
+    if not is_tribe_discoverable(current_profile) or not is_tribe_discoverable(
+        target_profile,
+    ):
+        return False
+
+    return any(
+        match.user_id == target_profile.get("user_id")
+        for match in find_ai_profile_matches(current_profile, profiles)
     )
 
 
@@ -245,6 +277,7 @@ def get_public_profile(
     current_user=Depends(get_current_user),
 ):
     profiles = get_profiles_or_503()
+    current_user_id = str(current_user["_id"])
     profile = profiles.find_one(
         {
             "$or": [
@@ -260,14 +293,32 @@ def get_public_profile(
             detail="Traveler profile not found",
         )
 
+    if profile.get("user_id") == current_user_id:
+        return {
+            "profile": serialize_profile(profile),
+        }
+
+    current_profile = profiles.find_one({"user_id": current_user_id})
+
+    if not current_profile or not user_can_view_tribe_profile(
+        current_profile,
+        profile,
+        profiles,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view traveler profiles available through your Tribe matches",
+        )
+
     return {
-        "profile": serialize_profile(profile),
+        "profile": serialize_tribe_profile(profile),
     }
 
 
 @app.put("/profile")
 def upsert_profile(
     profile_data: TravelProfileUpsert,
+    background_tasks: BackgroundTasks,
     confirm_incomplete: bool = False,
     current_user=Depends(get_current_user),
 ):
@@ -305,7 +356,7 @@ def upsert_profile(
 
     profile = profiles.find_one({"user_id": user_id})
     serialized_profile = serialize_profile(profile)
-    vector_upserted = synchronize_profile_embedding(serialized_profile)
+    background_tasks.add_task(synchronize_profile_embedding, serialized_profile)
 
     return {
         "message": (
@@ -314,7 +365,33 @@ def upsert_profile(
             else "Travel profile updated successfully"
         ),
         "profile": serialized_profile,
-        "vector_upserted": vector_upserted,
+        "vector_sync_queued": True,
+    }
+
+
+@app.patch("/profile/tribe-discoverable")
+def update_tribe_discoverability(
+    update: TribeDiscoverabilityUpdate,
+    current_user=Depends(get_current_user),
+):
+    profiles = get_profiles_or_503()
+    user_id = str(current_user["_id"])
+    existing_profile = profiles.find_one({"user_id": user_id})
+
+    if existing_profile is None:
+        initial_profile = build_initial_profile(current_user)
+        initial_profile["tribe_discoverable"] = update.tribe_discoverable
+        profiles.insert_one(initial_profile)
+    else:
+        profiles.update_one(
+            {"user_id": user_id},
+            {"$set": {"tribe_discoverable": update.tribe_discoverable}},
+        )
+
+    profile = profiles.find_one({"user_id": user_id})
+
+    return {
+        "profile": serialize_profile(profile),
     }
 
 

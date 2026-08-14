@@ -1,7 +1,5 @@
-from datetime import date, datetime
 from typing import Any
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import get_matches_collection
@@ -15,41 +13,16 @@ from services.profile_completeness import (
     INCOMPLETE_PROFILE_MATCHING_MESSAGE,
     evaluate_profile_completeness,
 )
+from services.profile_privacy import is_tribe_discoverable, serialize_tribe_profile
 
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
-def serialize_value(value: Any) -> Any:
-    if isinstance(value, ObjectId):
-        return str(value)
-
-    if isinstance(value, datetime):
-        return value.isoformat()
-
-    if isinstance(value, date):
-        return value.isoformat()
-
-    if isinstance(value, list):
-        return [serialize_value(item) for item in value]
-
-    if isinstance(value, dict):
-        return {
-            key: serialize_value(item)
-            for key, item in value.items()
-        }
-
-    return value
-
-
 def serialize_match(match: AIProfileMatch) -> dict[str, Any]:
-    profile = dict(match.profile)
-    profile.pop("_id", None)
-    profile.setdefault("preferred_travel_gender", "Anyone")
-
     return {
         "user_id": match.user_id,
-        "profile": serialize_value(profile),
+        "profile": serialize_tribe_profile(match.profile),
         "semantic_score": match.semantic_score,
         "compatibility_score": match.compatibility_score,
         "reason": build_ai_match_reason(match),
@@ -67,6 +40,15 @@ def get_matches(current_user=Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Create a travel profile before finding matches",
+        )
+
+    if not is_tribe_discoverable(current_profile):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "tribe_not_discoverable",
+                "message": "Enable Tribe Matching before finding matches.",
+            },
         )
 
     completeness = evaluate_profile_completeness(current_profile)

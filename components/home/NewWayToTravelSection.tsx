@@ -29,18 +29,18 @@ export function NewWayToTravelSection() {
             <p className="mt-14">Like branches from a shared root, our features seamlessly connect every step of your voyage. Explore the tree to see how traveler matching, live itinerary refinement, and local intelligence shape your next story. Each leaf represents a unique gateway to experiencing the world with greater depth, clarity, and camaraderie.</p>
           </motion.div>
           <motion.div className="relative mx-auto h-[34rem] w-full max-w-xl" variants={reveal}>
-            <div className="absolute left-1/2 top-8 h-[28rem] w-px -translate-x-1/2 bg-white/30" />
+            <div className="absolute left-1/2 top-0 h-[27rem] w-px -translate-x-1/2 bg-white/30" />
             {items.map((item, index) => {
-              const top = `${8 + index * 8.7}rem`;
+              const top = `${2 + index * 7.45}rem`;
               const leftSide = item.side === "left";
               return (
-                <a className={`group absolute flex w-[15rem] items-start gap-4 transition duration-300 hover:scale-105 ${leftSide ? "right-[52%] flex-row-reverse text-right" : "left-[52%]"}`} href={item.href} key={item.title} style={{ top }}>
+                <a className={`group absolute flex w-[15rem] items-start gap-4 transition duration-300 hover:scale-105 ${leftSide ? "right-1/2 flex-row-reverse pr-5 text-right" : "left-1/2 pl-5"}`} href={item.href} key={item.title} style={{ top }}>
                   <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/24 bg-black text-white transition duration-300 group-hover:bg-white group-hover:text-black"><item.Icon className="h-4 w-4" strokeWidth={1.5} /></span>
                   <span>
                     <span className="block text-sm font-semibold uppercase tracking-[0.28em] text-white">{item.title}</span>
                     <span className="mt-3 block text-sm leading-6 text-white/56">{item.description}</span>
                   </span>
-                  <span className="absolute top-3 h-3 w-3 rounded-full bg-white shadow-[0_0_0_8px_rgba(255,255,255,0.12)]" style={{ [leftSide ? "right" : "left"]: "calc(-2% - 0.375rem)" }} />
+                  <span className="absolute top-3 h-3 w-3 rounded-full bg-white shadow-[0_0_0_8px_rgba(255,255,255,0.12)]" style={{ [leftSide ? "right" : "left"]: "-0.375rem" }} />
                 </a>
               );
             })}

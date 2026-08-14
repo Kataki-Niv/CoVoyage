@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { ContentCard } from "@/components/shared/ContentCard";
-import { FormField } from "@/components/shared/FormField";
-import { PageShell } from "@/components/shared/PageShell";
 import {
   ApiError,
   AuthSessionResponse,
@@ -115,85 +113,112 @@ export default function SignupPage() {
   };
 
   return (
-    <PageShell
-      description="Create your CoVoyage profile and prepare for shared journeys with compatible travelers."
-      eyebrow="Begin the journey"
-      title="Create Account"
-    >
-      <section className="mx-auto max-w-2xl px-5 pb-20 sm:px-8">
-        <ContentCard>
-          <form className="grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
+    <div className="relative min-h-screen overflow-hidden bg-[#050505] text-[#f8f4ea]">
+      <div className="pointer-events-none absolute inset-0 bg-[url('/covoyage-hero-tree.jpg')] bg-cover bg-center opacity-[0.08]" />
+      <div className="pointer-events-none absolute inset-0 bg-[#050505]/88" />
+      <Navbar />
+      <main className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center px-5 py-8 sm:px-8">
+        <section className="w-full max-w-2xl">
+          <div className="mb-6 text-center">
+            <p className="text-xs font-medium uppercase tracking-[0.34em] text-white/45">
+              Begin The Journey
+            </p>
+            <h1 className="mt-3 font-serif text-5xl leading-none text-white">
+              Create Account
+            </h1>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/58">
+              Create your CoVoyage profile and prepare for shared journeys with
+              compatible travelers.
+            </p>
+          </div>
+
+          <div className="border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/30 sm:p-6">
+            <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
             {isCheckingSession ? (
-              <p className="text-sm text-stone-600 sm:col-span-2">
+              <p className="text-sm text-white/58 sm:col-span-2">
                 Checking saved session...
               </p>
             ) : null}
             {error ? (
-              <p className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">
+              <p className="border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm text-red-100 sm:col-span-2">
                 {error}
               </p>
             ) : null}
-            <FormField
-              label="Name"
-              name="name"
-              placeholder="Maya Chen"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-            <FormField
-              label="Username"
-              name="username"
-              placeholder="maya.travels"
-              value={formData.username}
-              onChange={handleChange}
-              required
-            />
-            <FormField
-              className="sm:col-span-2"
-              label="Email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-            <FormField
-              label="Password"
-              name="password"
-              type="password"
-              placeholder="Create a password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-            <FormField
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              placeholder="Confirm password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-            />
+            <label className="block text-sm font-medium text-white/72">
+              Name
+              <input
+                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                name="name"
+                placeholder="Maya Chen"
+                required
+                value={formData.name}
+                onChange={handleChange}
+              />
+            </label>
+            <label className="block text-sm font-medium text-white/72">
+              Username
+              <input
+                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                name="username"
+                placeholder="maya.travels"
+                required
+                value={formData.username}
+                onChange={handleChange}
+              />
+            </label>
+            <label className="block text-sm font-medium text-white/72 sm:col-span-2">
+              Email
+              <input
+                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                name="email"
+                placeholder="you@example.com"
+                required
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </label>
+            <label className="block text-sm font-medium text-white/72">
+              Password
+              <input
+                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                name="password"
+                placeholder="Create a password"
+                required
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </label>
+            <label className="block text-sm font-medium text-white/72">
+              Confirm Password
+              <input
+                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                name="confirmPassword"
+                placeholder="Confirm password"
+                required
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+            </label>
             <Button
-              className="sm:col-span-2"
+              className="h-11 w-full rounded-none bg-[#f8f4ea] text-black shadow-sm shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-white/10 focus-visible:ring-white/40 focus-visible:ring-offset-[#050505] sm:col-span-2"
               disabled={isCheckingSession || isSubmitting}
-              size="lg"
               type="submit"
             >
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-stone-600">
+          <p className="mt-4 text-center text-sm text-white/58">
             Already have an account?{" "}
-            <Link className="font-medium text-stone-900 underline-offset-4 hover:underline" href="/login">
+            <Link className="font-medium text-white underline-offset-4 hover:underline" href="/login">
               Login
             </Link>
           </p>
-        </ContentCard>
-      </section>
-    </PageShell>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
