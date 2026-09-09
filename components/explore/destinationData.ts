@@ -1,4 +1,5 @@
-export type DestinationKey = "iceland" | "guatemala" | "spain" | "japan";
+export type StaticDestinationKey = "iceland" | "guatemala" | "spain" | "japan";
+export type DestinationKey = StaticDestinationKey | (string & {});
 
 export type DestinationType = "featured" | "searched";
 
@@ -97,7 +98,7 @@ export type DestinationData = {
   localPhrases: LocalPhrase[];
 };
 
-export const destinations: Record<DestinationKey, DestinationData> = {
+export const destinations: Record<StaticDestinationKey, DestinationData> = {
   iceland: {
     key: "iceland",
     destinationType: "featured",

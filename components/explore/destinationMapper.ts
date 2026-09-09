@@ -304,6 +304,7 @@ export function mapBackendDestinationToDestinationData(
 
   return {
     ...fallback,
+    key: backend.country.slug ?? fallback.key,
     country: backend.country.name ?? fallback.country,
     currency: {
       name: backend.country.currency?.name ?? fallback.currency.name,

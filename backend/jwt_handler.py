@@ -17,7 +17,7 @@ def create_access_token(data: dict):
 
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(hours=24)
+    expire = datetime.utcnow() + timedelta(days=30)
 
     to_encode.update({"exp": expire})
 

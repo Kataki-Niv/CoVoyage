@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 from services.similarity_search import SimilarTraveler
@@ -9,12 +11,34 @@ from services.similarity_search import SimilarTraveler
 
 SCORE_MIN = 0.0
 SCORE_MAX = 100.0
+DEFAULT_MIN_COMPATIBILITY_SCORE = 40.0
+
+
+def parse_min_compatibility_score(raw_value: str | None) -> float:
+    if raw_value is None or not raw_value.strip():
+        return DEFAULT_MIN_COMPATIBILITY_SCORE
+
+    try:
+        score = float(raw_value)
+    except ValueError:
+        return DEFAULT_MIN_COMPATIBILITY_SCORE
+
+    return max(SCORE_MIN, min(SCORE_MAX, score))
+
+
+MIN_COMPATIBILITY_SCORE = parse_min_compatibility_score(
+    os.getenv("COVOYAGE_MIN_TRIBE_COMPATIBILITY_SCORE"),
+)
 
 COMPATIBILITY_WEIGHTS = {
-    "semantic_similarity": 0.80,
-    "budget_range": 0.06666666666666667,
-    "travel_style": 0.06666666666666667,
-    "languages_spoken": 0.06666666666666667,
+    "semantic_similarity": 0.35,
+    "preferred_destinations": 0.15,
+    "travel_dates": 0.15,
+    "interests": 0.15,
+    "travel_style": 0.075,
+    "budget_range": 0.05,
+    "preferred_trip_duration": 0.05,
+    "languages_spoken": 0.025,
 }
 
 
@@ -51,6 +75,9 @@ def build_compatibility_matches(
             semantic_score,
         )
 
+        if compatibility_score < MIN_COMPATIBILITY_SCORE:
+            continue
+
         matches.append(
             CompatibilityMatch(
                 user_id=user_id,
@@ -73,10 +100,18 @@ def compute_compatibility_score(
 ) -> float:
     weighted_score = (
         semantic_score * COMPATIBILITY_WEIGHTS["semantic_similarity"]
-        + score_budget_compatibility(source_profile, candidate_profile)
-        * COMPATIBILITY_WEIGHTS["budget_range"]
+        + score_destination_compatibility(source_profile, candidate_profile)
+        * COMPATIBILITY_WEIGHTS["preferred_destinations"]
+        + score_travel_date_compatibility(source_profile, candidate_profile)
+        * COMPATIBILITY_WEIGHTS["travel_dates"]
+        + score_interest_compatibility(source_profile, candidate_profile)
+        * COMPATIBILITY_WEIGHTS["interests"]
         + score_travel_style_compatibility(source_profile, candidate_profile)
         * COMPATIBILITY_WEIGHTS["travel_style"]
+        + score_budget_compatibility(source_profile, candidate_profile)
+        * COMPATIBILITY_WEIGHTS["budget_range"]
+        + score_trip_duration_compatibility(source_profile, candidate_profile)
+        * COMPATIBILITY_WEIGHTS["preferred_trip_duration"]
         + score_language_compatibility(source_profile, candidate_profile)
         * COMPATIBILITY_WEIGHTS["languages_spoken"]
     )
@@ -96,6 +131,55 @@ def score_semantic_similarity(similar_traveler: Any) -> float:
         return round(clamp_score(score * SCORE_MAX), 2)
 
     return round(clamp_score(score), 2)
+
+
+def score_destination_compatibility(
+    source_profile: Mapping[str, Any],
+    candidate_profile: Mapping[str, Any],
+) -> float:
+    return score_list_overlap_ratio(
+        source_profile.get("preferred_destinations"),
+        candidate_profile.get("preferred_destinations"),
+    )
+
+
+def score_travel_date_compatibility(
+    source_profile: Mapping[str, Any],
+    candidate_profile: Mapping[str, Any],
+) -> float:
+    source_start = parse_profile_date(source_profile.get("available_from"))
+    source_end = parse_profile_date(source_profile.get("available_to"))
+    candidate_start = parse_profile_date(candidate_profile.get("available_from"))
+    candidate_end = parse_profile_date(candidate_profile.get("available_to"))
+
+    if not source_start or not source_end or not candidate_start or not candidate_end:
+        return SCORE_MIN
+
+    if source_end < source_start or candidate_end < candidate_start:
+        return SCORE_MIN
+
+    overlap_start = max(source_start, candidate_start)
+    overlap_end = min(source_end, candidate_end)
+
+    if overlap_end < overlap_start:
+        return SCORE_MIN
+
+    overlap_days = (overlap_end - overlap_start).days + 1
+    source_days = (source_end - source_start).days + 1
+    candidate_days = (candidate_end - candidate_start).days + 1
+    shorter_window_days = max(1, min(source_days, candidate_days))
+
+    return round(clamp_score((overlap_days / shorter_window_days) * SCORE_MAX), 2)
+
+
+def score_interest_compatibility(
+    source_profile: Mapping[str, Any],
+    candidate_profile: Mapping[str, Any],
+) -> float:
+    return score_list_overlap_ratio(
+        source_profile.get("interests"),
+        candidate_profile.get("interests"),
+    )
 
 
 def score_budget_compatibility(
@@ -118,17 +202,27 @@ def score_travel_style_compatibility(
     )
 
 
+def score_trip_duration_compatibility(
+    source_profile: Mapping[str, Any],
+    candidate_profile: Mapping[str, Any],
+) -> float:
+    return score_exact_text_match(
+        source_profile.get("preferred_trip_duration"),
+        candidate_profile.get("preferred_trip_duration"),
+    )
+
+
 def score_language_compatibility(
     source_profile: Mapping[str, Any],
     candidate_profile: Mapping[str, Any],
 ) -> float:
-    return score_list_overlap(
+    return score_list_overlap_ratio(
         source_profile.get("languages_spoken"),
         candidate_profile.get("languages_spoken"),
     )
 
 
-def score_list_overlap(source_values: Any, candidate_values: Any) -> float:
+def score_list_overlap_ratio(source_values: Any, candidate_values: Any) -> float:
     source_items = normalize_list(source_values)
     candidate_items = normalize_list(candidate_values)
 
@@ -137,13 +231,14 @@ def score_list_overlap(source_values: Any, candidate_values: Any) -> float:
 
     source_lookup = set(source_items)
     candidate_lookup = set(candidate_items)
-    union = source_lookup | candidate_lookup
+    overlap_count = len(source_lookup & candidate_lookup)
 
-    if not union:
+    if overlap_count == 0:
         return SCORE_MIN
 
-    overlap = source_lookup & candidate_lookup
-    return round((len(overlap) / len(union)) * SCORE_MAX, 2)
+    source_overlap = overlap_count / len(source_lookup)
+    candidate_overlap = overlap_count / len(candidate_lookup)
+    return round(((source_overlap + candidate_overlap) / 2) * SCORE_MAX, 2)
 
 
 def score_exact_text_match(source_value: Any, candidate_value: Any) -> float:
@@ -224,6 +319,22 @@ def normalize_text(value: Any) -> str:
         return ""
 
     return " ".join(str(value).strip().casefold().split())
+
+
+def parse_profile_date(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    try:
+        return date.fromisoformat(value.strip()[:10])
+    except ValueError:
+        return None
 
 
 def get_field(value: Any, field_name: str) -> Any:

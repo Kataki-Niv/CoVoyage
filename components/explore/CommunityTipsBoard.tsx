@@ -5,13 +5,26 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { CommunityTip } from "@/components/explore/destinationData";
 import {
+  COMMUNITY_TIP_CATEGORIES,
   createCommunityReply,
   createCommunityTip,
+  deleteCommunityReply,
+  deleteCommunityTip,
   fetchCommunityReplies,
   fetchCommunityTips,
   type CommunityReplyResponse,
+  type CommunityTipCategory,
   type CommunityTipResponse,
 } from "@/lib/communityApi";
+import {
+  apiRequest,
+  getStoredUser,
+  getValidAuthToken,
+  onAuthChange,
+  storeAuthUser,
+  type AuthSessionResponse,
+  type AuthUser,
+} from "@/lib/api";
 
 type CommunityTipsBoardProps = {
   countrySlug: string;
@@ -22,14 +35,19 @@ type CommunityTipsBoardProps = {
 };
 
 type TipReply = {
+  id?: string;
   author: string;
+  authorId?: string | null;
   text: string;
 };
 
 type DiscussionTip = {
   id: string;
   author: string;
+  authorId?: string | null;
+  category: CommunityTipCategory;
   detail: string;
+  moderationStatus?: "pending" | "approved" | "rejected";
   quote: string;
   rating: string;
   replies: TipReply[];
@@ -87,12 +105,13 @@ function parseTraveler(traveler: string) {
 }
 
 function buildSeedTips(placeName: string, tips: CommunityTip[]): DiscussionTip[] {
-  const baseTips = tips.map((tip, index) => {
+  const baseTips: DiscussionTip[] = tips.map((tip, index) => {
     const traveler = parseTraveler(tip.traveler);
 
     return {
       id: `${placeName}-${tip.traveler}-${index}`,
       author: traveler.name,
+      category: "Hidden Gems",
       detail: traveler.detail || tip.location,
       quote: tip.quote,
       rating: tip.rating,
@@ -105,6 +124,7 @@ function buildSeedTips(placeName: string, tips: CommunityTip[]): DiscussionTip[]
     {
       id: `${placeName}-early-start`,
       author: "Maya Chen",
+      category: "Transport",
       detail: "Recent traveler",
       quote:
         "Start earlier than feels necessary. The quieter hours made the whole route feel calmer and more personal.",
@@ -115,6 +135,7 @@ function buildSeedTips(placeName: string, tips: CommunityTip[]): DiscussionTip[]
     {
       id: `${placeName}-pack-layers`,
       author: "Arjun Mehta",
+      category: "Safety",
       detail: "Road trip planner",
       quote:
         "Keep a warm layer and snacks within reach. The weather shifts quickly, and small delays are part of the rhythm.",
@@ -133,7 +154,9 @@ function getAuthorDetail(author: CommunityTipResponse["author"]) {
 
 function mapApiReply(reply: CommunityReplyResponse): TipReply {
   return {
+    id: reply.id,
     author: reply.author.name,
+    authorId: reply.author_id,
     text: reply.text,
   };
 }
@@ -142,12 +165,33 @@ function mapApiTip(tip: CommunityTipResponse): DiscussionTip {
   return {
     id: tip.id,
     author: tip.author.name,
+    authorId: tip.author_id,
+    category: tip.category,
     detail: getAuthorDetail(tip.author) || "Community traveler",
+    moderationStatus: tip.moderation_status,
     quote: tip.text,
     rating: typeof tip.rating === "number" ? tip.rating.toFixed(1) : "New",
     replies: [],
     replyCount: tip.reply_count,
   };
+}
+
+function normalizeOwnershipId(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getCurrentUserOwnershipIds(user: AuthUser | null) {
+  if (!user) {
+    return new Set<string>();
+  }
+
+  const legacyUser = user as AuthUser & { _id?: string };
+
+  return new Set(
+    [user.user_id, user.id, legacyUser._id]
+      .map(normalizeOwnershipId)
+      .filter(Boolean),
+  );
 }
 
 export function CommunityTipsBoard({
@@ -162,11 +206,20 @@ export function CommunityTipsBoard({
     placeSlug ? [] : seedTips,
   );
   const [expandedTipId, setExpandedTipId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<"All" | CommunityTipCategory>(
+    "All",
+  );
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newTip, setNewTip] = useState({ author: "", quote: "" });
+  const [newTip, setNewTip] = useState({
+    category: "Hidden Gems" as CommunityTipCategory,
+    quote: "",
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoadingTips, setIsLoadingTips] = useState(Boolean(placeSlug));
+  const [storedUser, setStoredUser] = useState(() => getStoredUser());
+  const [deletingTipId, setDeletingTipId] = useState<string | null>(null);
+  const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -205,6 +258,57 @@ export function CommunityTipsBoard({
     };
   }, [placeSlug, seedTips]);
 
+  useEffect(() => {
+    const refreshStoredUser = async () => {
+      const token = getValidAuthToken();
+
+      if (!token) {
+        setStoredUser(getStoredUser());
+        return;
+      }
+
+      try {
+        const session = await apiRequest<AuthSessionResponse>("/auth/session", {
+          token,
+        });
+
+        if (session.user) {
+          storeAuthUser(session.user);
+          setStoredUser(session.user);
+          return;
+        }
+      } catch {
+        setStoredUser(getStoredUser());
+      }
+    };
+
+    void refreshStoredUser();
+
+    return onAuthChange(() => setStoredUser(getStoredUser()));
+  }, []);
+
+  const displayedTips = useMemo(
+    () =>
+      activeCategory === "All"
+        ? discussionTips
+        : discussionTips.filter((tip) => tip.category === activeCategory),
+    [activeCategory, discussionTips],
+  );
+
+  const storedUserName =
+    storedUser?.name || storedUser?.username || storedUser?.email?.split("@")[0] || "";
+  const storedUserIds = getCurrentUserOwnershipIds(storedUser);
+
+  const canDeleteTip = (tip: DiscussionTip) =>
+    Boolean(placeSlug && storedUserIds.has(normalizeOwnershipId(tip.authorId)));
+
+  const canDeleteReply = (reply: TipReply) =>
+    Boolean(
+      placeSlug &&
+        reply.id &&
+        storedUserIds.has(normalizeOwnershipId(reply.authorId)),
+    );
+
   const handleTipToggle = useCallback(
     async (tip: DiscussionTip) => {
       const nextTipId = expandedTipId === tip.id ? null : tip.id;
@@ -241,14 +345,16 @@ export function CommunityTipsBoard({
       return;
     }
 
+    if (!storedUserName) {
+      setErrorMessage("Please sign in to reply to community tips.");
+      return;
+    }
+
     if (placeSlug) {
       try {
         const reply = await createCommunityReply(tipId, {
           text: draft,
-          author: {
-            name: "CoVoyage Traveler",
-          },
-        });
+        }, getValidAuthToken());
 
         setDiscussionTips((currentTips) =>
           currentTips.map((tip) =>
@@ -278,7 +384,7 @@ export function CommunityTipsBoard({
               replies: [
                 ...tip.replies,
                 {
-                  author: "You",
+                  author: storedUserName,
                   text: draft,
                 },
               ],
@@ -293,10 +399,9 @@ export function CommunityTipsBoard({
   const handleShareTip = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const author = newTip.author.trim();
     const quote = newTip.quote.trim();
 
-    if (!author || !quote) {
+    if (!storedUserName || !quote) {
       return;
     }
 
@@ -306,17 +411,17 @@ export function CommunityTipsBoard({
           country_slug: countrySlug,
           place_slug: placeSlug,
           text: quote,
-          author: {
-            name: author,
-            role: "Community traveler",
-          },
-        });
+          category: newTip.category,
+        }, getValidAuthToken());
 
         setDiscussionTips((currentTips) => [
           mapApiTip(createdTip),
           ...currentTips,
         ]);
-        setNewTip({ author: "", quote: "" });
+        setNewTip({
+          category: "Hidden Gems",
+          quote: "",
+        });
         setIsModalOpen(false);
         setErrorMessage(null);
       } catch {
@@ -329,8 +434,10 @@ export function CommunityTipsBoard({
     setDiscussionTips((currentTips) => [
       {
         id: `${placeName}-${Date.now()}`,
-        author,
+        author: storedUserName,
+        category: newTip.category,
         detail: "Community traveler",
+        moderationStatus: "approved",
         quote,
         rating: "New",
         replies: [],
@@ -338,8 +445,68 @@ export function CommunityTipsBoard({
       },
       ...currentTips,
     ]);
-    setNewTip({ author: "", quote: "" });
+    setNewTip({
+      category: "Hidden Gems",
+      quote: "",
+    });
     setIsModalOpen(false);
+  };
+
+  const handleDeleteTip = async (tipId: string) => {
+    const token = getValidAuthToken();
+
+    if (!token) {
+      setErrorMessage("Please sign in to delete your community tip.");
+      return;
+    }
+
+    setDeletingTipId(tipId);
+
+    try {
+      await deleteCommunityTip(tipId, token);
+      setDiscussionTips((currentTips) =>
+        currentTips.filter((tip) => tip.id !== tipId),
+      );
+      setExpandedTipId((currentTipId) =>
+        currentTipId === tipId ? null : currentTipId,
+      );
+      setErrorMessage(null);
+    } catch {
+      setErrorMessage("Your tip could not be deleted. Please try again.");
+    } finally {
+      setDeletingTipId(null);
+    }
+  };
+
+  const handleDeleteReply = async (tipId: string, replyId: string) => {
+    const token = getValidAuthToken();
+
+    if (!token) {
+      setErrorMessage("Please sign in to delete your reply.");
+      return;
+    }
+
+    setDeletingReplyId(replyId);
+
+    try {
+      await deleteCommunityReply(tipId, replyId, token);
+      setDiscussionTips((currentTips) =>
+        currentTips.map((tip) =>
+          tip.id === tipId
+            ? {
+                ...tip,
+                replies: tip.replies.filter((reply) => reply.id !== replyId),
+                replyCount: Math.max(0, tip.replyCount - 1),
+              }
+            : tip,
+        ),
+      );
+      setErrorMessage(null);
+    } catch {
+      setErrorMessage("Your reply could not be deleted. Please try again.");
+    } finally {
+      setDeletingReplyId(null);
+    }
   };
 
   return (
@@ -396,6 +563,37 @@ export function CommunityTipsBoard({
         </p>
       ) : null}
 
+      {discussionTips.length ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(["All", ...COMMUNITY_TIP_CATEGORIES] as const).map((category) => {
+            const isActive = activeCategory === category;
+
+            return (
+              <button
+                className={
+                  isDarkEditorial
+                    ? `border px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] transition-colors ${
+                        isActive
+                          ? "border-[#D8BE8A] bg-[#D8BE8A] text-[#0B0B0C]"
+                          : "border-[#D8BE8A]/24 text-[#D8BE8A] hover:border-[#D8BE8A]/45"
+                      }`
+                    : `border px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] transition-colors ${
+                        isActive
+                          ? "border-[#7d584e] bg-[#7d584e] text-[#fffaf3]"
+                          : "border-[#b99686] text-[#7d584e] hover:bg-[#efe1d8]"
+                      }`
+                }
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                type="button"
+              >
+                {category}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="grid gap-3">
         {isLoadingTips ? (
           <div
@@ -421,7 +619,19 @@ export function CommunityTipsBoard({
           </div>
         ) : null}
 
-        {discussionTips.map((tip) => {
+        {!isLoadingTips && discussionTips.length && !displayedTips.length ? (
+          <div
+            className={
+              isDarkEditorial
+                ? "border border-[#D8BE8A]/18 bg-[#151515] px-4 py-4 text-sm text-[#B8B0A4]"
+                : "border border-[#dfc9be] bg-[#fffaf3] px-4 py-4 text-sm text-[#6f5b53]"
+            }
+          >
+            No tips in this category yet.
+          </div>
+        ) : null}
+
+        {displayedTips.map((tip) => {
           const isExpanded = expandedTipId === tip.id;
 
           return (
@@ -433,6 +643,16 @@ export function CommunityTipsBoard({
               }
               key={tip.id}
             >
+              <span
+                className={
+                  isDarkEditorial
+                    ? "mb-3 inline-flex border border-[#D8BE8A]/24 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#D8BE8A]"
+                    : "mb-3 inline-flex border border-[#b99686] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#7d584e]"
+                }
+              >
+                {tip.category}
+                {tip.moderationStatus === "pending" ? " / Pending" : ""}
+              </span>
               <p
                 className={
                   isDarkEditorial
@@ -493,6 +713,20 @@ export function CommunityTipsBoard({
                   >
                     {isExpanded ? "Collapse" : "Reply"}
                   </button>
+                  {canDeleteTip(tip) ? (
+                    <button
+                      className={
+                        isDarkEditorial
+                          ? "text-[#D8BE8A] transition-colors hover:text-[#F5F1E8] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A]"
+                          : "text-[#8d6255] transition-colors hover:text-[#5a3b2d] disabled:cursor-not-allowed disabled:opacity-45"
+                      }
+                      disabled={deletingTipId === tip.id}
+                      onClick={() => handleDeleteTip(tip.id)}
+                      type="button"
+                    >
+                      {deletingTipId === tip.id ? "Deleting" : "Delete"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -516,16 +750,32 @@ export function CommunityTipsBoard({
                   <div className="mt-3 space-y-3">
                     {tip.replies.length ? (
                       tip.replies.map((reply, index) => (
-                        <div key={`${reply.author}-${index}`}>
-                          <p
-                            className={
-                              isDarkEditorial
-                                ? "text-xs font-medium text-[#F5F1E8]"
-                                : "text-xs font-medium text-[#4f413c]"
-                            }
-                          >
-                            {reply.author}
-                          </p>
+                        <div key={reply.id ?? `${reply.author}-${index}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p
+                              className={
+                                isDarkEditorial
+                                  ? "text-xs font-medium text-[#F5F1E8]"
+                                  : "text-xs font-medium text-[#4f413c]"
+                              }
+                            >
+                              {reply.author}
+                            </p>
+                            {canDeleteReply(reply) && reply.id ? (
+                              <button
+                                className={
+                                  isDarkEditorial
+                                    ? "text-[10px] font-medium uppercase tracking-[0.14em] text-[#D8BE8A] transition-colors hover:text-[#F5F1E8] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A]"
+                                    : "text-[10px] font-medium uppercase tracking-[0.14em] text-[#8d6255] transition-colors hover:text-[#5a3b2d] disabled:cursor-not-allowed disabled:opacity-45"
+                                }
+                                disabled={deletingReplyId === reply.id}
+                                onClick={() => handleDeleteReply(tip.id, reply.id!)}
+                                type="button"
+                              >
+                                {deletingReplyId === reply.id ? "Deleting" : "Delete"}
+                              </button>
+                            ) : null}
+                          </div>
                           <p
                             className={
                               isDarkEditorial
@@ -562,7 +812,7 @@ export function CommunityTipsBoard({
                           [tip.id]: event.target.value,
                         }))
                       }
-                      placeholder="Write a reply..."
+                      placeholder={storedUserName ? "Write a reply..." : "Sign in to reply..."}
                       value={replyDrafts[tip.id] ?? ""}
                     />
                     <button
@@ -571,7 +821,7 @@ export function CommunityTipsBoard({
                           ? "h-10 border border-[#D8BE8A]/36 px-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[#D8BE8A] transition-colors hover:bg-[#D8BE8A] hover:text-[#0B0B0C] disabled:cursor-not-allowed disabled:opacity-45"
                           : "h-10 border border-[#b99686] px-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[#7d584e] transition-colors hover:bg-[#efe1d8] disabled:cursor-not-allowed disabled:opacity-45"
                       }
-                      disabled={!replyDrafts[tip.id]?.trim()}
+                      disabled={!storedUserName || !replyDrafts[tip.id]?.trim()}
                       onClick={() => handleReplySubmit(tip.id)}
                       type="button"
                     >
@@ -638,6 +888,41 @@ export function CommunityTipsBoard({
             </div>
 
             <div className="space-y-4 pt-5">
+              <div
+                className={
+                  isDarkEditorial
+                    ? "block text-[10px] font-medium uppercase tracking-[0.18em] text-[#D8BE8A]/80"
+                    : "block text-[10px] font-medium uppercase tracking-[0.18em] text-[#8d6255]"
+                }
+              >
+                Posting as
+                <div
+                  className={
+                    isDarkEditorial
+                      ? "mt-2 border border-white/10 bg-[#0B0B0C] px-3 py-3"
+                      : "mt-2 border border-[#d8b7aa] bg-[#fbf8f2] px-3 py-3"
+                  }
+                >
+                  <p
+                    className={
+                      isDarkEditorial
+                        ? "text-sm normal-case tracking-normal text-[#F5F1E8]"
+                        : "text-sm normal-case tracking-normal text-[#4f413c]"
+                    }
+                  >
+                    {storedUserName || "Sign in to post"}
+                  </p>
+                  <p
+                    className={
+                      isDarkEditorial
+                        ? "mt-1 text-xs normal-case leading-5 tracking-normal text-[#9E9589]"
+                        : "mt-1 text-xs normal-case leading-5 tracking-normal text-[#8d6255]"
+                    }
+                  >
+                    Your profile name will be shown with this community tip.
+                  </p>
+                </div>
+              </div>
               <label
                 className={
                   isDarkEditorial
@@ -645,22 +930,27 @@ export function CommunityTipsBoard({
                     : "block text-[10px] font-medium uppercase tracking-[0.18em] text-[#8d6255]"
                 }
               >
-                Your name
-                <input
+                Category
+                <select
                   className={
                     isDarkEditorial
-                      ? "mt-2 h-11 w-full border border-white/10 bg-[#0B0B0C] px-3 text-sm text-[#F5F1E8] outline-none placeholder:text-[#9E9589] focus:border-[#D8BE8A]/45"
-                      : "mt-2 h-11 w-full border border-[#d8b7aa] bg-[#fbf8f2] px-3 text-sm text-[#4f413c] outline-none placeholder:text-[#a89288]"
+                      ? "mt-2 h-11 w-full border border-white/10 bg-[#0B0B0C] px-3 text-sm text-[#F5F1E8] outline-none focus:border-[#D8BE8A]/45"
+                      : "mt-2 h-11 w-full border border-[#d8b7aa] bg-[#fbf8f2] px-3 text-sm text-[#4f413c] outline-none"
                   }
                   onChange={(event) =>
                     setNewTip((currentTip) => ({
                       ...currentTip,
-                      author: event.target.value,
+                      category: event.target.value as CommunityTipCategory,
                     }))
                   }
-                  placeholder="Your name"
-                  value={newTip.author}
-                />
+                  value={newTip.category}
+                >
+                  {COMMUNITY_TIP_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label
                 className={
@@ -706,7 +996,7 @@ export function CommunityTipsBoard({
                     ? "bg-[#D8BE8A] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#0B0B0C] transition-colors hover:bg-[#F5F1E8] disabled:cursor-not-allowed disabled:opacity-45"
                     : "bg-[#7d584e] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#fffaf3] disabled:cursor-not-allowed disabled:opacity-45"
                 }
-                disabled={!newTip.author.trim() || !newTip.quote.trim()}
+                disabled={!storedUserName || !newTip.quote.trim()}
                 type="submit"
               >
                 Share Tip

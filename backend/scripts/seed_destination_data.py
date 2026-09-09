@@ -11,11 +11,13 @@ if str(BACKEND_DIR) not in sys.path:
 
 from database import (
     get_countries_collection,
+    get_destination_events_collection,
     get_destination_monthly_factors_collection,
     get_places_collection,
 )
 from models import (
     DestinationCountryCreate,
+    DestinationEventCreate,
     DestinationMonthlyFactorsCreate,
     DestinationPlaceCreate,
 )
@@ -40,6 +42,13 @@ def build_place_document(place_data: dict) -> dict:
 
 def build_monthly_factor_document(monthly_factor_data: dict) -> dict:
     return DestinationMonthlyFactorsCreate(**monthly_factor_data).model_dump(
+        mode="json",
+        exclude_none=True,
+    )
+
+
+def build_event_document(event_data: dict) -> dict:
+    return DestinationEventCreate(**event_data).model_dump(
         mode="json",
         exclude_none=True,
     )
@@ -82,6 +91,10 @@ def validate_destination_dataset(dataset: dict) -> dict:
         DestinationMonthlyFactorsCreate(**monthly_factor)
         for monthly_factor in dataset.get("monthly_factors", [])
     ]
+    events = [
+        DestinationEventCreate(**event)
+        for event in dataset.get("events", [])
+    ]
     country_slugs = {country.slug}
     invalid_places = [
         place.slug for place in places if place.country_slug not in country_slugs
@@ -95,6 +108,9 @@ def validate_destination_dataset(dataset: dict) -> dict:
         for monthly_factor in monthly_factors
         if monthly_factor.country_slug not in country_slugs
     ]
+    invalid_events = [
+        event.title for event in events if event.country_slug not in country_slugs
+    ]
 
     if invalid_places:
         raise ValueError(f"Places reference unknown country_slug: {invalid_places}")
@@ -105,10 +121,14 @@ def validate_destination_dataset(dataset: dict) -> dict:
             f"{invalid_monthly_factors}"
         )
 
+    if invalid_events:
+        raise ValueError(f"Events reference unknown country_slug: {invalid_events}")
+
     return {
         "country": country,
         "places": places,
         "monthly_factors": monthly_factors,
+        "events": events,
     }
 
 
@@ -117,6 +137,7 @@ def seed_destination_data(country_slug: str) -> dict:
     validate_destination_dataset(dataset)
 
     countries = get_countries_collection()
+    destination_events = get_destination_events_collection()
     places = get_places_collection()
     destination_monthly_factors = get_destination_monthly_factors_collection()
 
@@ -170,6 +191,28 @@ def seed_destination_data(country_slug: str) -> dict:
             }
         )
 
+    event_results = []
+    for event_data in dataset.get("events", []):
+        event_document = build_event_document(event_data)
+        result = destination_events.update_one(
+            {
+                "country_slug": event_document["country_slug"],
+                "title": event_document["title"],
+                "date_start": event_document["date_start"],
+                "location": event_document["location"],
+            },
+            {"$set": event_document},
+            upsert=True,
+        )
+        event_results.append(
+            {
+                "title": event_document["title"],
+                "country_slug": event_document["country_slug"],
+                "upserted": result.upserted_id is not None,
+                "modified_count": result.modified_count,
+            }
+        )
+
     return {
         "country": {
             "slug": country_document["slug"],
@@ -178,6 +221,7 @@ def seed_destination_data(country_slug: str) -> dict:
         },
         "places": place_results,
         "monthly_factors": monthly_factor_results,
+        "events": event_results,
     }
 
 
@@ -202,6 +246,18 @@ def print_seed_result(result: dict) -> None:
             f"{factor['country_slug']} {factor['year']}-{factor['month']:02d} "
             f"(upserted={factor['upserted']}, modified={factor['modified_count']})"
             for factor in result["monthly_factors"]
+        )
+    )
+    print(
+        "Events: "
+        + (
+            ", ".join(
+                f"{event['title']} "
+                f"(upserted={event['upserted']}, modified={event['modified_count']})"
+                for event in result["events"]
+            )
+            if result["events"]
+            else "none"
         )
     )
 

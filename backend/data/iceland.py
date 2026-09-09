@@ -2,6 +2,7 @@
 
 from models import (
     DestinationCountryCreate,
+    DestinationEventCreate,
     DestinationMonthlyFactorsCreate,
     DestinationPlaceCreate,
 )
@@ -703,11 +704,93 @@ ICELAND_AUGUST_2026_MONTHLY_FACTORS = {
 }
 
 
+ICELAND_EVENTS = [
+    {
+        "title": "Total Solar Eclipse",
+        "category": "Astronomy / Major Event",
+        "country_slug": "iceland",
+        "place_slug": "reykjavik-and-west-iceland",
+        "date_start": "2026-08-12",
+        "location": "Western Iceland / path of totality",
+        "description": (
+            "A total solar eclipse crosses western Iceland on 12 August 2026. "
+            "The path of totality includes areas such as the Westfjords, "
+            "Snaefellsnes, Reykjanes and Reykjavik. Plan travel in advance, "
+            "expect increased traffic around popular viewing areas, and use "
+            "certified eclipse glasses outside totality."
+        ),
+        "media": {
+            "url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&q=84",
+            "alt": "Dramatic Icelandic landscape under atmospheric sky",
+        },
+        "verification_status": "verified",
+        "sources": [VISIT_ICELAND],
+    },
+    {
+        "title": "Reykjavik Culture Night",
+        "category": "Culture",
+        "country_slug": "iceland",
+        "place_slug": "reykjavik-and-west-iceland",
+        "date_start": "2026-08-22",
+        "location": "Reykjavik",
+        "description": (
+            "A citywide cultural evening with music, museums, food, and "
+            "neighborhood events."
+        ),
+        "media": {
+            "url": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?auto=format&fit=crop&w=600&q=84",
+            "alt": "Reykjavik city buildings under soft northern light",
+        },
+        "verification_status": "verified",
+        "sources": [VISIT_ICELAND],
+    },
+    {
+        "title": "Highlands Summer Hiking",
+        "category": "Nature / Adventure",
+        "country_slug": "iceland",
+        "place_slug": "landmannalaugar",
+        "date_start": "2026-08-01",
+        "date_end": "2026-08-31",
+        "location": "Icelandic Highlands",
+        "description": (
+            "A practical late-summer window for guided Highlands hikes and "
+            "scenic routes."
+        ),
+        "media": {
+            "url": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=600&q=84",
+            "alt": "Colorful mountain landscape in summer light",
+        },
+        "verification_status": "verified",
+        "sources": [VISIT_ICELAND, ROAD_AUTHORITY, SAFE_TRAVEL],
+    },
+    {
+        "title": "Puffin Coast Watching",
+        "category": "Wildlife",
+        "country_slug": "iceland",
+        "place_slug": "south-coast",
+        "date_start": "2026-08-01",
+        "date_end": "2026-08-10",
+        "location": "Icelandic coastal areas",
+        "description": (
+            "A seasonal coastal experience framed around early-August wildlife "
+            "watching conditions."
+        ),
+        "media": {
+            "url": "https://images.unsplash.com/photo-1471107340929-a87cd0f5b5f3?auto=format&fit=crop&w=600&q=84",
+            "alt": "Coastal bird perched near the sea",
+        },
+        "verification_status": "verified",
+        "sources": [VISIT_ICELAND, VISIT_SOUTH_ICELAND],
+    },
+]
+
+
 def get_iceland_seed_dataset():
     return {
         "country": ICELAND_COUNTRY,
         "places": ICELAND_PLACES,
         "monthly_factors": [ICELAND_AUGUST_2026_MONTHLY_FACTORS],
+        "events": ICELAND_EVENTS,
     }
 
 
@@ -719,6 +802,7 @@ def validate_iceland_seed_dataset():
         DestinationMonthlyFactorsCreate(**monthly_factor)
         for monthly_factor in dataset["monthly_factors"]
     ]
+    events = [DestinationEventCreate(**event) for event in dataset["events"]]
 
     country_slugs = {country.slug}
     invalid_places = [
@@ -729,12 +813,20 @@ def validate_iceland_seed_dataset():
         for monthly_factor in monthly_factors
         if monthly_factor.country_slug not in country_slugs
     ]
+    invalid_events = [
+        event.title
+        for event in events
+        if event.country_slug not in country_slugs
+    ]
 
     if invalid_places:
         raise ValueError(f"Places reference unknown country_slug: {invalid_places}")
 
     if invalid_months:
         raise ValueError(f"Monthly factors reference unknown country_slug: {invalid_months}")
+
+    if invalid_events:
+        raise ValueError(f"Events reference unknown country_slug: {invalid_events}")
 
     return {
         "country_slug": country.slug,
@@ -743,4 +835,5 @@ def validate_iceland_seed_dataset():
             {"year": monthly_factor.year, "month": monthly_factor.month}
             for monthly_factor in monthly_factors
         ],
+        "event_titles": [event.title for event in events],
     }

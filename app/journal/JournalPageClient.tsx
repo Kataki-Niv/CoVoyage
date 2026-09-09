@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   communityJournalPosts,
@@ -39,10 +39,16 @@ const typeIcons = {
 
 export function JournalPageClient() {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("All");
-  const [isModalOpen, setIsModalOpen] = useState(
-    () => typeof window !== "undefined" && window.location.hash === "#create-post",
-  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash === "#create-post") {
+      const timer = window.setTimeout(() => setIsModalOpen(true), 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
 
   const filteredPosts = useMemo(() => {
     if (activeFilter === "All") {

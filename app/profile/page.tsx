@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera } from "lucide-react";
+import { Camera, Lock, LogOut, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -13,10 +13,18 @@ import { Button } from "@/components/ui/button";
 import {
   ApiError,
   apiRequest,
+  changePassword,
   clearAuth,
+  decodeJwtPayload,
+  getAccount,
   getValidAuthToken,
   getStoredUser,
+  requestEmailVerification,
+  resolveMediaUrl,
+  storeAuthUser,
+  uploadProfileImage,
 } from "@/lib/api";
+import type { AuthUser } from "@/lib/api";
 
 type ProfileFormData = {
   name: string;
@@ -51,6 +59,7 @@ type TravelProfile = Omit<
   | "previously_visited_countries"
 > & {
   user_id?: string;
+  email?: string;
   tribe_discoverable?: boolean;
   age: number | null;
   preferred_destinations?: string[] | null;
@@ -69,6 +78,12 @@ type ProfileSaveResponse = {
   profile: TravelProfile;
 };
 
+type PasswordFormData = {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+};
+
 const PROFILE_SAVE_SUCCESS_MESSAGE = "Profile updated successfully.";
 const SUCCESS_VISIBLE_DURATION_MS = 3000;
 const SUCCESS_CLEAR_DURATION_MS = 3400;
@@ -78,6 +93,15 @@ const SUPPORTED_PROFILE_IMAGE_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
+const tribeMatchCacheKey = "covoyage_find_your_tribe_matches";
+
+function clearTribeMatchCache() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(tribeMatchCacheKey);
+}
 
 type ProfileCompleteness = {
   complete: boolean;
@@ -320,16 +344,8 @@ const listFields = new Set([
 ]);
 
 function decodeTokenSubject(token: string | null) {
-  if (!token) {
-    return "";
-  }
-
-  try {
-    const payload = JSON.parse(window.atob(token.split(".")[1]));
-    return typeof payload.sub === "string" ? payload.sub : "";
-  } catch {
-    return "";
-  }
+  const payload = decodeJwtPayload<{ sub?: string }>(token);
+  return typeof payload?.sub === "string" ? payload.sub : "";
 }
 
 function fallbackProfileData(): ProfileFormData {
@@ -499,6 +515,10 @@ function isHttpsUrl(value: string) {
   return Boolean(url && url.protocol === "https:");
 }
 
+function isProfileImageReference(value: string) {
+  return value.startsWith("/media/profile-images/") || isHttpsUrl(value);
+}
+
 function isSupportedHost(hostname: string, allowedHost: string) {
   const normalizedHostname = hostname.toLowerCase();
   return (
@@ -652,9 +672,9 @@ function validateField(
     }
 
     case "profile_picture_url":
-      return !trimmedValue || isHttpsUrl(trimmedValue)
+      return !trimmedValue || isProfileImageReference(trimmedValue)
         ? ""
-        : "Profile picture URL must be an HTTPS URL";
+        : "Profile picture URL must be an HTTPS URL or uploaded CoVoyage image";
 
     case "country":
       return "";
@@ -920,6 +940,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<ProfileFormData>(emptyProfile);
   const [selectedProfileImageUrl, setSelectedProfileImageUrl] = useState("");
   const [profileImageError, setProfileImageError] = useState("");
+  const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSuccessVisible, setIsSuccessVisible] = useState(false);
@@ -930,13 +951,26 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isTribeSaving, setIsTribeSaving] = useState(false);
   const [tribeDiscoverable, setTribeDiscoverable] = useState(false);
+  const [accountUser, setAccountUser] = useState<AuthUser | null>(null);
+  const [emailDeliveryConfigured, setEmailDeliveryConfigured] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isRequestingVerification, setIsRequestingVerification] =
+    useState(false);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [passwordForm, setPasswordForm] = useState<PasswordFormData>({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
   const [pendingIncompleteSave, setPendingIncompleteSave] =
     useState<ProfileCompleteness | null>(null);
   const profileImageInputRef = useRef<HTMLInputElement | null>(null);
   const previewImageUrlRef = useRef<string | null>(null);
   const token = useMemo(() => getValidAuthToken(), []);
   const displayedProfileImageUrl =
-    selectedProfileImageUrl || formData.profile_picture_url;
+    selectedProfileImageUrl || resolveMediaUrl(formData.profile_picture_url);
 
   useEffect(() => {
     return () => {
@@ -983,6 +1017,17 @@ export default function ProfilePage() {
           },
         );
         setProfileOptions(optionsResponse);
+
+        try {
+          const accountResponse = await getAccount(token);
+          setAccountUser(accountResponse.user);
+          storeAuthUser(accountResponse.user);
+          setEmailDeliveryConfigured(
+            accountResponse.email_delivery_configured === true,
+          );
+        } catch {
+          setAccountUser(getStoredUser());
+        }
 
         const response = await apiRequest<ProfileResponse>("/profile", {
           token,
@@ -1150,12 +1195,18 @@ export default function ProfilePage() {
     }
   };
 
-  const handleProfileImageSelect = (
+  const handleProfileImageSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
 
     if (!file) {
+      return;
+    }
+
+    if (!token) {
+      router.push("/login");
       return;
     }
 
@@ -1164,13 +1215,11 @@ export default function ProfilePage() {
       !SUPPORTED_PROFILE_IMAGE_TYPES.has(file.type)
     ) {
       setProfileImageError("Choose a JPG, PNG, or WEBP image.");
-      event.target.value = "";
       return;
     }
 
     if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
       setProfileImageError("Choose an image smaller than 5 MB.");
-      event.target.value = "";
       return;
     }
 
@@ -1183,7 +1232,43 @@ export default function ProfilePage() {
     previewImageUrlRef.current = nextPreviewUrl;
     setSelectedProfileImageUrl(nextPreviewUrl);
     setProfileImageError("");
-    event.target.value = "";
+    setIsUploadingProfileImage(true);
+
+    try {
+      const response = await uploadProfileImage<TravelProfile>(file, token);
+
+      setFormData(profileToForm(response.profile, profileOptions?.enum_options));
+      setTribeDiscoverable(response.profile.tribe_discoverable === true);
+      setSelectedProfileImageUrl("");
+      setProfileImageError("");
+      setSuccess("Profile photo updated successfully.");
+
+      if (previewImageUrlRef.current) {
+        URL.revokeObjectURL(previewImageUrlRef.current);
+        previewImageUrlRef.current = null;
+      }
+    } catch (caughtError) {
+      setSelectedProfileImageUrl("");
+
+      if (previewImageUrlRef.current) {
+        URL.revokeObjectURL(previewImageUrlRef.current);
+        previewImageUrlRef.current = null;
+      }
+
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        clearAuth();
+        router.push("/login");
+        return;
+      }
+
+      setProfileImageError(
+        caughtError instanceof ApiError
+          ? caughtError.detail
+          : "Unable to upload profile photo.",
+      );
+    } finally {
+      setIsUploadingProfileImage(false);
+    }
   };
 
   const saveProfile = async (confirmIncomplete: boolean) => {
@@ -1225,8 +1310,20 @@ export default function ProfilePage() {
 
       setFormData(profileToForm(savedProfile, profileOptions?.enum_options));
       setTribeDiscoverable(savedProfile.tribe_discoverable === true);
+      setAccountUser((previous) => {
+        const nextUser = {
+          ...(previous || getStoredUser() || {}),
+          name: savedProfile.name,
+          username: savedProfile.username,
+          email: savedProfile.email,
+        };
+
+        storeAuthUser(nextUser);
+        return nextUser;
+      });
       setFieldErrors({});
       setPendingIncompleteSave(null);
+      clearTribeMatchCache();
       setSuccess(PROFILE_SAVE_SUCCESS_MESSAGE);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (caughtError) {
@@ -1302,6 +1399,7 @@ export default function ProfilePage() {
       );
 
       setTribeDiscoverable(response.profile?.tribe_discoverable === true);
+      clearTribeMatchCache();
     } catch (caughtError) {
       setTribeDiscoverable(previousValue);
 
@@ -1320,6 +1418,109 @@ export default function ProfilePage() {
       setIsTribeSaving(false);
     }
   };
+
+  const handlePasswordChange = (
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
+    const fieldName = event.target.name as keyof PasswordFormData;
+
+    setPasswordForm((previous) => ({
+      ...previous,
+      [fieldName]: event.target.value,
+    }));
+    setPasswordError("");
+    setPasswordMessage("");
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (passwordForm.new_password.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordError("New password and confirmation must match.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError("");
+    setPasswordMessage("");
+
+    try {
+      const response = await changePassword(passwordForm, token);
+      setPasswordMessage(response.message || "Password updated successfully.");
+      setPasswordForm({
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        clearAuth();
+        router.push("/login");
+        return;
+      }
+
+      setPasswordError(
+        caughtError instanceof ApiError
+          ? caughtError.detail
+          : "Unable to update password.",
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleEmailVerificationRequest = async () => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setIsRequestingVerification(true);
+    setVerificationMessage("");
+
+    try {
+      const response = await requestEmailVerification(token);
+      setEmailDeliveryConfigured(
+        response.email_delivery_configured === true,
+      );
+      setVerificationMessage(response.message);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        clearAuth();
+        router.push("/login");
+        return;
+      }
+
+      setVerificationMessage(
+        caughtError instanceof ApiError
+          ? caughtError.detail
+          : "Unable to prepare email verification.",
+      );
+    } finally {
+      setIsRequestingVerification(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    router.push("/login");
+  };
+
+  const displayedAccountUser = accountUser || getStoredUser();
+  const accountEmail =
+    displayedAccountUser?.email || decodeTokenSubject(getValidAuthToken());
+  const accountUsername = displayedAccountUser?.username || formData.username;
+  const emailVerified = displayedAccountUser?.email_verified === true;
 
   return (
     <AuthGuard>
@@ -1413,7 +1614,7 @@ export default function ProfilePage() {
                     : "Select profile picture"
                 }
                 className="group relative mx-auto grid h-36 w-36 place-items-center overflow-hidden rounded-full border border-dashed border-white/18 bg-black/35 text-white/45 transition duration-200 hover:border-white/35 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f8f4ea]"
-                disabled={isSaving}
+                disabled={isSaving || isUploadingProfileImage}
                 type="button"
                 onClick={() => profileImageInputRef.current?.click()}
               >
@@ -1434,10 +1635,16 @@ export default function ProfilePage() {
                 )}
               </button>
               <h2 className="mt-6 font-serif text-3xl text-white">
-                {displayedProfileImageUrl ? "Change Photo" : "Profile Picture"}
+                {isUploadingProfileImage
+                  ? "Uploading..."
+                  : displayedProfileImageUrl
+                    ? "Change Photo"
+                    : "Profile Picture"}
               </h2>
               <p className="mt-3 text-sm leading-6 text-white/58">
-                {displayedProfileImageUrl
+                {isUploadingProfileImage
+                  ? "Saving your photo to your CoVoyage profile."
+                  : displayedProfileImageUrl
                   ? "Click the photo to choose a different image."
                   : "Click to choose a profile photo from your device."}
               </p>
@@ -1460,6 +1667,146 @@ export default function ProfilePage() {
                 </ContentCard>
               ) : (
                 <>
+                  <ContentCard className={darkCardClass}>
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-white/42">
+                          <ShieldCheck className="h-4 w-4" />
+                          Account Settings
+                        </p>
+                        <h2 className="font-serif text-3xl text-white">
+                          Login And Security
+                        </h2>
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">
+                          Manage the account details that protect your CoVoyage
+                          passport and keep your saved trips, Tribe matches,
+                          groups, and chats tied to the same login.
+                        </p>
+                      </div>
+                      <Button
+                        className="w-fit border-white/18 bg-transparent text-white hover:bg-white/10"
+                        type="button"
+                        variant="outline"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Log Out
+                      </Button>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-[4px] border border-white/10 bg-black/25 p-4">
+                        <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-white/42">
+                          <Mail className="h-4 w-4" />
+                          Email
+                        </p>
+                        <p className="mt-3 break-words text-sm text-white/78">
+                          {accountEmail || "Not available"}
+                        </p>
+                        <p className="mt-2 text-xs text-white/42">
+                          {emailVerified ? "Verified" : "Not verified"}
+                        </p>
+                      </div>
+                      <div className="rounded-[4px] border border-white/10 bg-black/25 p-4">
+                        <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/42">
+                          Username
+                        </p>
+                        <p className="mt-3 break-words text-sm text-white/78">
+                          {accountUsername ? `@${accountUsername}` : "Not set"}
+                        </p>
+                        <p className="mt-2 text-xs text-white/42">
+                          Edit your public username in Basic Information.
+                        </p>
+                      </div>
+                    </div>
+
+                    {!emailVerified ? (
+                      <div className="mt-5 rounded-[4px] border border-white/10 bg-black/25 p-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-sm leading-6 text-white/62">
+                            {emailDeliveryConfigured
+                              ? "Request a verification email for this account."
+                              : "Email verification tokens can be prepared, but outbound email delivery is not configured yet."}
+                          </p>
+                          <Button
+                            className="w-fit border-white/18 bg-transparent text-white hover:bg-white/10"
+                            disabled={isRequestingVerification}
+                            type="button"
+                            variant="outline"
+                            onClick={handleEmailVerificationRequest}
+                          >
+                            {isRequestingVerification
+                              ? "Preparing..."
+                              : "Prepare Verification"}
+                          </Button>
+                        </div>
+                        {verificationMessage ? (
+                          <p className="mt-3 text-sm text-white/58">
+                            {verificationMessage}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div
+                      className="mt-6 grid gap-4 rounded-[4px] border border-white/10 bg-black/25 p-4"
+                    >
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-white/42">
+                        <Lock className="h-4 w-4" />
+                        Change Password
+                      </p>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <FormField
+                          label="Current Password"
+                          name="current_password"
+                          type="password"
+                          value={passwordForm.current_password}
+                          disabled={isChangingPassword}
+                          onChange={handlePasswordChange}
+                        />
+                        <FormField
+                          label="New Password"
+                          name="new_password"
+                          type="password"
+                          value={passwordForm.new_password}
+                          disabled={isChangingPassword}
+                          onChange={handlePasswordChange}
+                        />
+                        <FormField
+                          label="Confirm Password"
+                          name="confirm_password"
+                          type="password"
+                          value={passwordForm.confirm_password}
+                          disabled={isChangingPassword}
+                          onChange={handlePasswordChange}
+                        />
+                      </div>
+                      {passwordError ? (
+                        <p className="text-sm text-red-200">{passwordError}</p>
+                      ) : null}
+                      {passwordMessage ? (
+                        <p className="text-sm text-green-100">
+                          {passwordMessage}
+                        </p>
+                      ) : null}
+                      <Button
+                        className="w-fit bg-[#f8f4ea] text-black hover:bg-white"
+                        disabled={
+                          isChangingPassword ||
+                          !passwordForm.current_password ||
+                          !passwordForm.new_password ||
+                          !passwordForm.confirm_password
+                        }
+                        onClick={handlePasswordSubmit}
+                        type="button"
+                      >
+                        {isChangingPassword
+                          ? "Updating Password..."
+                          : "Update Password"}
+                      </Button>
+                    </div>
+                  </ContentCard>
+
                   <ContentCard className={darkCardClass}>
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                       <div>

@@ -2,31 +2,64 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from database import get_matches_collection
+from database import (
+    get_connection_requests_collection,
+    get_matches_collection,
+    get_tribe_blocks_collection,
+)
 from dependencies import get_current_user, get_profiles_or_503
 from services.ai_matching_pipeline import (
     AIProfileMatch,
-    build_ai_match_reason,
+    MatchingServiceError,
     find_ai_profile_matches,
 )
+from services.connections import get_relationship_status
+from services.blocks import users_are_blocked
 from services.profile_completeness import (
     INCOMPLETE_PROFILE_MATCHING_MESSAGE,
     evaluate_profile_completeness,
 )
-from services.profile_privacy import is_tribe_discoverable, serialize_tribe_profile
+from services.profile_privacy import (
+    is_tribe_discoverable,
+    serialize_tribe_match_profile,
+)
 
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
-def serialize_match(match: AIProfileMatch) -> dict[str, Any]:
+def raise_matching_service_unavailable(error: MatchingServiceError) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": error.code,
+            "message": error.message,
+        },
+    ) from error
+
+
+def serialize_match(
+    match: AIProfileMatch,
+    current_profile: dict[str, Any],
+    relationship_status: str = "none",
+) -> dict[str, Any]:
+    profile = serialize_tribe_match_profile(current_profile, match.profile)
+    match_context = profile.get("match_context") or {}
+    factors = match_context.get("factors") or []
+    explanation = match_context.get(
+        "explanation",
+        "This traveler aligns with your saved Tribe matching signals.",
+    )
+
     return {
         "user_id": match.user_id,
-        "profile": serialize_tribe_profile(match.profile),
+        "profile": profile,
         "semantic_score": match.semantic_score,
         "compatibility_score": match.compatibility_score,
-        "reason": build_ai_match_reason(match),
-        "factors": [],
+        "reason": explanation,
+        "explanation": explanation,
+        "factors": factors,
+        "relationship_status": relationship_status,
     }
 
 
@@ -63,12 +96,30 @@ def get_matches(current_user=Depends(get_current_user)):
             },
         )
 
-    ai_matches = find_ai_profile_matches(
-        current_profile,
-        profiles,
-    )
+    try:
+        ai_matches = find_ai_profile_matches(
+            current_profile,
+            profiles,
+        )
+    except MatchingServiceError as error:
+        raise_matching_service_unavailable(error)
 
-    return [serialize_match(match) for match in ai_matches]
+    connection_requests = get_connection_requests_collection()
+    tribe_blocks = get_tribe_blocks_collection()
+
+    return [
+        serialize_match(
+            match,
+            current_profile,
+            get_relationship_status(
+                connection_requests,
+                current_user_id,
+                match.user_id,
+            ),
+        )
+        for match in ai_matches
+        if not users_are_blocked(tribe_blocks, current_user_id, match.user_id)
+    ]
 
 
 @router.get("/status")

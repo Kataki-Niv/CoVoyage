@@ -1,17 +1,32 @@
+import os
 from datetime import date, datetime
+from typing import Literal
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from pymongo import ReturnDocument
+from pydantic import BaseModel
 
 from database import (
     get_community_replies_collection,
     get_community_tips_collection,
 )
-from models import CommunityReplyCreate, CommunityTipCreate
+from dependencies import get_current_user
+from models import (
+    COMMUNITY_TIP_CATEGORY_VALUES,
+    DEFAULT_COMMUNITY_TIP_CATEGORY,
+    CommunityReplyCreate,
+    CommunityTipCreate,
+)
 
 
 router = APIRouter(prefix="/community", tags=["community"])
+MODERATION_TOKEN = os.getenv("COMMUNITY_MODERATION_TOKEN", "").strip()
+
+
+class CommunityTipModerationUpdate(BaseModel):
+    moderation_status: Literal["pending", "approved", "rejected"]
 
 
 def get_community_collections_or_503():
@@ -55,6 +70,101 @@ def serialize_document(document):
     return serialized_document
 
 
+def safe_author_from_user(user):
+    if not user:
+        return None
+
+    display_name = (
+        user.get("name")
+        or user.get("username")
+        or user.get("email", "").split("@")[0]
+        or "CoVoyage Traveler"
+    )
+
+    return {
+        "name": display_name,
+        "role": "Community traveler",
+    }
+
+
+def apply_user_attribution(document, current_user):
+    user_author = safe_author_from_user(current_user)
+
+    if not user_author:
+        return document
+
+    document["author_id"] = str(current_user["_id"])
+    document["author"] = user_author
+    return document
+
+
+def user_has_community_moderation_privileges(current_user):
+    if current_user.get("is_admin") or current_user.get("is_moderator"):
+        return True
+
+    roles = current_user.get("roles") or []
+
+    if isinstance(roles, str):
+        roles = [roles]
+
+    role_values = [
+        current_user.get("role"),
+        current_user.get("account_role"),
+        *roles,
+    ]
+
+    return any(
+        str(role).strip().lower() in {"admin", "moderator"}
+        for role in role_values
+        if role
+    )
+
+
+def ensure_can_delete_community_document(document, current_user):
+    current_user_id = str(current_user["_id"])
+
+    if (
+        document.get("author_id") == current_user_id
+        or user_has_community_moderation_privileges(current_user)
+    ):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You can only delete your own community content",
+    )
+
+
+def normalize_tip_document(document):
+    serialized_document = serialize_document(document)
+    category = serialized_document.get("category")
+
+    if category not in COMMUNITY_TIP_CATEGORY_VALUES:
+        serialized_document["category"] = DEFAULT_COMMUNITY_TIP_CATEGORY
+
+    serialized_document["moderation_status"] = serialized_document.get(
+        "moderation_status",
+        "approved",
+    )
+    serialized_document["helpful_count"] = serialized_document.get("helpful_count", 0)
+
+    return serialized_document
+
+
+def require_moderation_token(token):
+    if not MODERATION_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Community moderation token is not configured",
+        )
+
+    if token != MODERATION_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid moderation token",
+        )
+
+
 def parse_object_id(value: str, field_name: str = "id"):
     try:
         return ObjectId(value)
@@ -86,7 +196,11 @@ def get_community_replies(tip_id: str):
 
 
 @router.post("/tips/{tip_id}/reply", status_code=status.HTTP_201_CREATED)
-def create_community_reply(tip_id: str, reply: CommunityReplyCreate):
+def create_community_reply(
+    tip_id: str,
+    reply: CommunityReplyCreate,
+    current_user=Depends(get_current_user),
+):
     collections = get_community_collections_or_503()
     tip_object_id = parse_object_id(tip_id, "tip id")
 
@@ -98,6 +212,7 @@ def create_community_reply(tip_id: str, reply: CommunityReplyCreate):
 
     now = datetime.utcnow()
     reply_document = reply.model_dump(mode="json")
+    reply_document = apply_user_attribution(reply_document, current_user)
     reply_document.update(
         {
             "tip_id": tip_id,
@@ -109,6 +224,83 @@ def create_community_reply(tip_id: str, reply: CommunityReplyCreate):
     result = collections["replies"].insert_one(reply_document)
     created_reply = collections["replies"].find_one({"_id": result.inserted_id})
     return serialize_document(created_reply)
+
+
+@router.delete("/tips/{tip_id}/replies/{reply_id}")
+def delete_community_reply(
+    tip_id: str,
+    reply_id: str,
+    current_user=Depends(get_current_user),
+):
+    collections = get_community_collections_or_503()
+    parse_object_id(tip_id, "tip id")
+    reply_object_id = parse_object_id(reply_id, "reply id")
+    reply = collections["replies"].find_one(
+        {
+            "_id": reply_object_id,
+            "tip_id": tip_id,
+        }
+    )
+
+    if reply is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community reply not found",
+        )
+
+    ensure_can_delete_community_document(reply, current_user)
+    collections["replies"].delete_one({"_id": reply_object_id})
+
+    return {
+        "deleted": True,
+        "id": reply_id,
+        "tip_id": tip_id,
+    }
+
+
+@router.get("/moderation/tips/pending")
+def get_pending_community_tips(
+    x_covoyage_moderation_token: str | None = Header(default=None),
+):
+    require_moderation_token(x_covoyage_moderation_token)
+    collections = get_community_collections_or_503()
+    tips = list(
+        collections["tips"]
+        .find({"moderation_status": "pending"})
+        .sort("created_at", -1)
+    )
+
+    return [normalize_tip_document(tip) for tip in tips]
+
+
+@router.patch("/moderation/tips/{tip_id}")
+def update_community_tip_moderation(
+    tip_id: str,
+    update: CommunityTipModerationUpdate,
+    x_covoyage_moderation_token: str | None = Header(default=None),
+):
+    require_moderation_token(x_covoyage_moderation_token)
+    collections = get_community_collections_or_503()
+    tip_object_id = parse_object_id(tip_id, "tip id")
+
+    updated_tip = collections["tips"].find_one_and_update(
+        {"_id": tip_object_id},
+        {
+            "$set": {
+                "moderation_status": update.moderation_status,
+                "updated_at": datetime.utcnow(),
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+
+    if updated_tip is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community tip not found",
+        )
+
+    return normalize_tip_document(updated_tip)
 
 
 @router.get("/tips/{place_slug}")
@@ -138,7 +330,7 @@ def get_community_tips(place_slug: str):
 
     return [
         {
-            **serialize_document(tip),
+            **normalize_tip_document(tip),
             "reply_count": reply_counts.get(str(tip["_id"]), 0),
         }
         for tip in tips
@@ -146,15 +338,19 @@ def get_community_tips(place_slug: str):
 
 
 @router.post("/tips", status_code=status.HTTP_201_CREATED)
-def create_community_tip(tip: CommunityTipCreate):
+def create_community_tip(
+    tip: CommunityTipCreate,
+    current_user=Depends(get_current_user),
+):
     collections = get_community_collections_or_503()
     now = datetime.utcnow()
     tip_document = tip.model_dump(mode="json")
+    tip_document = apply_user_attribution(tip_document, current_user)
     tip_document.update(
         {
             "created_at": now,
             "updated_at": now,
-            "moderation_status": "approved",
+            "moderation_status": "pending",
             "helpful_count": 0,
         }
     )
@@ -163,6 +359,32 @@ def create_community_tip(tip: CommunityTipCreate):
     created_tip = collections["tips"].find_one({"_id": result.inserted_id})
 
     return {
-        **serialize_document(created_tip),
+        **normalize_tip_document(created_tip),
         "reply_count": 0,
+    }
+
+
+@router.delete("/tips/{tip_id}")
+def delete_community_tip(
+    tip_id: str,
+    current_user=Depends(get_current_user),
+):
+    collections = get_community_collections_or_503()
+    tip_object_id = parse_object_id(tip_id, "tip id")
+    tip = collections["tips"].find_one({"_id": tip_object_id})
+
+    if tip is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Community tip not found",
+        )
+
+    ensure_can_delete_community_document(tip, current_user)
+    collections["tips"].delete_one({"_id": tip_object_id})
+    deleted_replies = collections["replies"].delete_many({"tip_id": tip_id})
+
+    return {
+        "deleted": True,
+        "id": tip_id,
+        "deleted_reply_count": deleted_replies.deleted_count,
     }

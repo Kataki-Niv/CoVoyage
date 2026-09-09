@@ -47,7 +47,7 @@ export default async function DynamicExploreRoute({
 
   const fallbackDestination: DestinationData = {
       ...destinations.japan,
-      key: "japan",
+      key: countrySlug,
       country: countryName,
       heroTitle: `Planning to Visit ${countryName}?`,
       intro: `You searched for ${countryName}, so this guide gives you a simple starting point for local culture, seasonal planning, and practical travel context.`,

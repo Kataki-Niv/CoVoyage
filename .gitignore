@@ -21,6 +21,7 @@ dist/
 !.env.example
 
 backend/.env
+backend/media/
 
 # =========================
 # Python

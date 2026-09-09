@@ -139,6 +139,14 @@ export default function LoginPage() {
                 onChange={handleChange}
               />
             </label>
+            <div className="text-right">
+              <Link
+                className="text-sm font-medium text-white/72 underline-offset-4 hover:text-white hover:underline"
+                href="/forgot-password"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <Button
               className="h-11 w-full rounded-none bg-[#f8f4ea] text-black shadow-sm shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-white/10 focus-visible:ring-white/40 focus-visible:ring-offset-[#050505]"
               disabled={isCheckingSession || isSubmitting}

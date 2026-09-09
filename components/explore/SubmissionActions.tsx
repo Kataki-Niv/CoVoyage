@@ -8,6 +8,7 @@ import {
   createDestinationEvent,
   type DestinationEventResponse,
 } from "@/lib/eventsApi";
+import { getValidAuthToken } from "@/lib/api";
 
 type CommunityTipSubmissionProps = {
   placeName: string;
@@ -103,6 +104,7 @@ export function EventSubmission({
     date: "",
     description: "",
     location: "",
+    time: "",
     title: "",
   });
   const isDark = variant === "dark";
@@ -116,6 +118,7 @@ export function EventSubmission({
       date: "",
       description: "",
       location: "",
+      time: "",
       title: "",
     });
   };
@@ -134,9 +137,10 @@ export function EventSubmission({
         category: eventDraft.category,
         country_slug: countrySlug,
         date_start: eventDraft.date,
+        time: eventDraft.time || null,
         location: eventDraft.location,
         description: eventDraft.description,
-      });
+      }, getValidAuthToken());
 
       onEventCreated?.(createdEvent);
       setIsSubmitted(true);
@@ -206,6 +210,18 @@ export function EventSubmission({
                 required={Boolean(countrySlug)}
                 type="date"
                 value={eventDraft.date}
+                variant={variant}
+              />
+              <PrototypeInput
+                label="Time"
+                onChange={(value) =>
+                  setEventDraft((currentDraft) => ({
+                    ...currentDraft,
+                    time: value,
+                  }))
+                }
+                placeholder="Evening, 18:30..."
+                value={eventDraft.time}
                 variant={variant}
               />
               <PrototypeInput

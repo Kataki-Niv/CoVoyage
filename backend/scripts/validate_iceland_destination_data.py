@@ -58,6 +58,7 @@ def main():
             for monthly_factor in summary["monthly_factors"]
         )
     )
+    print(f"Events: {', '.join(summary['event_titles'])}")
 
 
 if __name__ == "__main__":

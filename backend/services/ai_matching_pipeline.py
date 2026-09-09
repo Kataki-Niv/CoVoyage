@@ -14,6 +14,7 @@ from services.rule_based_matching import (
     has_overlapping_travel_dates,
     travel_gender_preferences_are_compatible,
 )
+from services.profile_completeness import is_profile_complete_for_matching
 from services.profile_privacy import is_tribe_discoverable
 from services.similarity_search import SimilarTraveler, find_similar_users_by_ids
 
@@ -31,6 +32,19 @@ class SimilaritySearchService(Protocol):
         candidate_user_ids: Sequence[str],
     ) -> list[SimilarTraveler]:
         ...
+
+
+class MatchingServiceError(RuntimeError):
+    """Raised when the AI matching service cannot safely produce results."""
+
+    def __init__(
+        self,
+        code: str = "matching_service_unavailable",
+        message: str = "Tribe matching is temporarily unavailable. Please try again.",
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 
 @dataclass(frozen=True)
@@ -89,11 +103,11 @@ def find_ai_profile_matches(
     )
 
     if not eligible_similar_travelers:
-        logger.info(
-            "AI matching found no eligible semantic candidates for user_id=%s",
+        logger.warning(
+            "AI matching could not score eligible semantic candidates for user_id=%s",
             current_user_id,
         )
-        return []
+        raise MatchingServiceError("matching_semantic_service_unavailable")
 
     try:
         compatibility_matches = build_compatibility_matches(
@@ -101,12 +115,12 @@ def find_ai_profile_matches(
             eligible_similar_travelers,
             eligible_candidate_profiles_by_user_id,
         )
-    except Exception:
+    except Exception as error:
         logger.exception(
             "AI compatibility ranking failed for user_id=%s",
             current_user_id,
         )
-        return []
+        raise MatchingServiceError("matching_ranking_failed") from error
 
     return attach_profiles_to_matches(
         compatibility_matches,
@@ -157,12 +171,12 @@ def get_similar_travelers_for_candidates(
             user_id,
             candidate_user_ids=candidate_user_ids,
         )
-    except Exception:
+    except Exception as error:
         logger.exception(
             "AI semantic scoring failed for eligible candidates for user_id=%s",
             user_id,
         )
-        return []
+        raise MatchingServiceError("matching_semantic_service_unavailable") from error
 
 
 def fetch_candidate_profiles(
@@ -176,9 +190,9 @@ def fetch_candidate_profiles(
                 "tribe_discoverable": True,
             }
         )
-    except Exception:
+    except Exception as error:
         logger.exception("Failed to load AI match candidate profiles from MongoDB")
-        return {}
+        raise MatchingServiceError("matching_candidate_lookup_failed") from error
 
     profiles_by_user_id: dict[str, dict[str, Any]] = {}
 
@@ -204,11 +218,11 @@ def fetch_candidate_profiles_by_user_id(
         candidate_profiles = profiles_collection.find(
             {"user_id": {"$in": user_ids}}
         )
-    except Exception:
+    except Exception as error:
         logger.exception(
             "Failed to load AI match candidate profiles from MongoDB"
         )
-        return {}
+        raise MatchingServiceError("matching_candidate_lookup_failed") from error
 
     profiles_by_user_id: dict[str, dict[str, Any]] = {}
 
@@ -249,6 +263,8 @@ def candidate_is_eligible_for_ai_matching(
     return (
         is_tribe_discoverable(current_profile)
         and is_tribe_discoverable(candidate_profile)
+        and is_profile_complete_for_matching(current_profile)
+        and is_profile_complete_for_matching(candidate_profile)
         and travel_gender_preferences_are_compatible(
             current_profile,
             candidate_profile,

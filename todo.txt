@@ -1,0 +1,74 @@
+# 🌍 Master the Local Vibe
+
+1. Better integration of the AI Plan Generator into the Local Vibe experience
+2. AI itinerary generation
+3. Initial trip planning form
+4. Day-by-day itinerary
+5. Activities and recommendations
+6. Estimated trip costs
+7. Personalized itinerary generation
+8. Refine My Plan
+9. Natural-language itinerary modification
+10. Real AI Assistant
+11. Destination-aware AI responses
+12. AI itinerary refinement through the Assistant
+13. Save generated itineraries as Trips
+14. View and manage saved Trips
+15. Connect AI planning with Local Vibe information
+16. Connect AI planning with community intelligence
+17. Connect AI planning with relevant events
+18. Complete community tip moderation/approval flow
+19. Populate community tips with approved content
+20. Reduce reliance on fallback/static destination content
+21. Complete dedicated local customs information
+22. Strengthen local food recommendations
+23. Strengthen hidden gems and local hacks
+24. Seed real backend events for destinations
+25. Complete event save/bookmark functionality
+26. Complete the Discover → View → Join → Participate event flow
+27. Improve integration between destination information, community intelligence, and events
+28. MCP matching tool
+29. MCP itinerary tool
+30. Agent-based orchestration
+
+# 🤝 Find Your Tribe
+
+31. Add notifications/indicators for incoming connection requests
+32. Add notifications/indicators for Group Voyage requests
+33. Populate Group Voyages with sample/demo voyages
+34. Improve activity compatibility
+35. Improve integration between events and traveller connections
+
+# 📝 CoVoyage Journals
+
+36. Connect Journal UI to the real backend
+37. Real journal creation
+38. Real journal publishing
+39. Published journals appearing in the feed
+40. Real individual journal/article pages
+41. Author association
+42. Destination association
+43. Categories/tags
+44. Edit journals
+45. Delete journals
+46. Save drafts
+47. My Journals
+48. Journal search/filtering
+49. Related/featured journal discovery
+
+# 🛍️ CoVoyage Shop
+
+50. Improve product catalogue
+51. Product search
+52. Product recommendations
+53. Functional Add to Bag
+54. Cart/Bag
+55. Change quantity
+56. Remove items
+57. Cart total
+58. Destination-specific travel essentials
+59. Trip-type-specific essentials
+60. Last-minute travel recommendations
+61. Connect recommendations with trip/planning context
+62. Basic checkout experience
+63. Order confirmation

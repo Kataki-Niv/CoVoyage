@@ -163,6 +163,36 @@ def validate_https_url(url: HttpUrl, field_name: str) -> HttpUrl:
     return url
 
 
+def validate_profile_picture_reference(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = value.strip()
+
+    if not value:
+        return None
+
+    if value.startswith("/media/profile-images/"):
+        filename = value.rsplit("/", 1)[-1]
+
+        if (
+            not filename
+            or "/" in filename
+            or "\\" in filename
+            or ".." in filename
+        ):
+            raise ValueError("Profile picture URL is invalid")
+
+        return value
+
+    parsed_url = urlparse(value)
+
+    if parsed_url.scheme != "https":
+        raise ValueError("Profile picture URL must be an HTTPS URL")
+
+    return value
+
+
 def is_supported_host(hostname: Optional[str], allowed_hosts: set[str]) -> bool:
     if not hostname:
         return False
@@ -198,15 +228,28 @@ def validate_instagram_value(instagram: Optional[str]) -> Optional[str]:
 class UserCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    name: str
-    username: str = Field(..., min_length=3, max_length=50)
+    name: str = Field(..., min_length=2, max_length=60)
+    username: str = Field(..., min_length=3, max_length=30)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, max_length=128)
 
     @field_validator("email")
     @classmethod
     def normalize_email(cls, email: EmailStr) -> str:
         return normalize_email_address(str(email))
+
+    @field_validator("name")
+    @classmethod
+    def validate_signup_name(cls, name: str) -> str:
+        return validate_name_characters(name)
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def normalize_signup_username(cls, username: str) -> str:
+        if not isinstance(username, str):
+            raise ValueError("Username is required")
+
+        return validate_username_format(username)
 
 
 class UserLogin(BaseModel):
@@ -334,11 +377,8 @@ class TravelProfileValidationBase(BaseModel):
 
     @field_validator("profile_picture_url", check_fields=False)
     @classmethod
-    def validate_profile_picture_url(cls, url: Optional[HttpUrl]) -> Optional[HttpUrl]:
-        if url is None:
-            return None
-
-        return validate_https_url(url, "Profile picture URL")
+    def validate_profile_picture_url(cls, url: Optional[str]) -> Optional[str]:
+        return validate_profile_picture_reference(url)
 
     @field_validator("linkedin", check_fields=False)
     @classmethod
@@ -414,7 +454,7 @@ class TravelProfile(TravelProfileValidationBase):
         max_length=50,
     )
     bio: Optional[str] = Field(default=None, min_length=20, max_length=500)
-    profile_picture_url: Optional[HttpUrl] = None
+    profile_picture_url: Optional[str] = None
     travel_style: Optional[str] = Field(default=None, min_length=1, max_length=100)
     preferred_destinations: List[str] = Field(default_factory=list, max_length=10)
     budget_range: Optional[str] = Field(default=None, min_length=1, max_length=100)
@@ -447,7 +487,7 @@ class TravelProfileUpsert(TravelProfileValidationBase):
         max_length=50,
     )
     bio: Optional[str] = Field(default=None, min_length=20, max_length=500)
-    profile_picture_url: Optional[HttpUrl] = None
+    profile_picture_url: Optional[str] = None
     travel_style: Optional[str] = Field(default=None, min_length=1, max_length=100)
     preferred_destinations: List[str] = Field(default_factory=list, max_length=10)
     budget_range: Optional[str] = Field(default=None, min_length=1, max_length=100)
@@ -466,6 +506,64 @@ class TravelProfileUpsert(TravelProfileValidationBase):
     linkedin: Optional[HttpUrl] = None
     instagram: Optional[str] = Field(default=None, max_length=120)
     personal_website: Optional[HttpUrl] = None
+
+
+class ProfileImageUpload(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    file_name: Optional[str] = Field(default=None, max_length=240)
+    content_type: str = Field(..., min_length=1, max_length=80)
+    content_base64: str = Field(..., min_length=1)
+
+
+class PasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_passwords(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("New password and confirmation must match")
+
+        if self.current_password == self.new_password:
+            raise ValueError("New password must be different from the current password")
+
+        return self
+
+
+class EmailVerificationConfirm(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    token: str = Field(..., min_length=20, max_length=500)
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, email: EmailStr) -> str:
+        return normalize_email_address(str(email))
+
+
+class PasswordResetConfirm(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    token: str = Field(..., min_length=20, max_length=500)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_passwords(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("New password and confirmation must match")
+
+        return self
 
 
 class MatchBase(BaseModel):
@@ -524,30 +622,171 @@ class Trip(TripBase):
     id: Optional[str] = None
 
 
+class ChatConversationCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target_user_id: str = Field(..., min_length=1)
+
+
+class ChatMessageCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    body: str = Field(..., min_length=1, max_length=2000)
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, body: str) -> str:
+        trimmed_body = body.strip()
+
+        if not trimmed_body:
+            raise ValueError("Message body cannot be empty")
+
+        return trimmed_body
+
+
 class ChatMessage(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    sender_id: str = Field(..., min_length=1)
-    message: str = Field(..., min_length=1, max_length=2000)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    id: str
+    conversation_id: str
+    sender_id: str
+    recipient_id: Optional[str] = None
+    body: str
+    created_at: datetime
+    read_at: Optional[datetime] = None
+    sender_profile: Optional[dict[str, Any]] = None
 
 
-class ChatBase(BaseModel):
+class ChatConversation(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    participant_ids: List[str] = Field(..., min_length=2)
-    match_id: Optional[str] = Field(default=None, min_length=1)
-    trip_id: Optional[str] = Field(default=None, min_length=1)
-    messages: List[ChatMessage] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    id: str
+    participant_ids: List[str] = Field(default_factory=list)
+    type: Literal["direct", "group_voyage"] = "direct"
+    pair_key: Optional[str] = None
+    voyage_id: Optional[str] = None
+    voyage_title: Optional[str] = None
+    voyage_destination: Optional[str] = None
+    voyage_status: Optional[str] = None
+    connection_request_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    last_message_at: Optional[datetime] = None
+    last_message_preview: Optional[str] = None
+    other_user_id: Optional[str] = None
+    other_profile: Optional[dict[str, Any]] = None
+    current_user_id: Optional[str] = None
 
 
-class ChatCreate(ChatBase):
+class ChatCreate(ChatConversationCreate):
     pass
 
 
-class Chat(ChatBase):
+class Chat(ChatConversation):
+    pass
+
+
+class ConnectionRequestCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target_user_id: str = Field(..., min_length=1)
+
+
+class TribeBlockCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target_user_id: str = Field(..., min_length=1)
+
+
+class TribeReportCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    reported_user_id: str = Field(..., min_length=1)
+    reason: Literal[
+        "Harassment",
+        "Spam or scam",
+        "Unsafe travel behavior",
+        "Fake profile",
+        "Inappropriate content",
+        "Other",
+    ]
+    description: Optional[str] = Field(default=None, max_length=1000)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_report_description(cls, value: Any) -> Any:
+        return normalize_optional_text(value)
+
+
+class GroupVoyageBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: str = Field(..., min_length=3, max_length=160)
+    destination: str = Field(..., min_length=2, max_length=160)
+    start_date: date
+    end_date: Optional[date] = None
+    description: str = Field(..., min_length=20, max_length=1200)
+    tags: List[str] = Field(default_factory=list, max_length=12)
+    budget_range: Optional[str] = Field(default=None, max_length=100)
+    max_participants: StrictInt = Field(default=8, ge=2, le=50)
+    status: Literal["open", "closed"] = "open"
+    visibility: Literal["public", "private"] = "public"
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_group_tags(cls, value: Any) -> list[str]:
+        return dedupe_clean_text_list(value)
+
+    @field_validator("budget_range", mode="before")
+    @classmethod
+    def normalize_group_budget(cls, value: Any) -> Any:
+        return normalize_optional_text(value)
+
+    @model_validator(mode="after")
+    def validate_group_dates(self):
+        if self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError("end_date cannot be before start_date")
+
+        return self
+
+
+class GroupVoyageCreate(GroupVoyageBase):
+    pass
+
+
+class GroupVoyageUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: Optional[str] = Field(default=None, min_length=3, max_length=160)
+    destination: Optional[str] = Field(default=None, min_length=2, max_length=160)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    description: Optional[str] = Field(default=None, min_length=20, max_length=1200)
+    tags: Optional[List[str]] = Field(default=None, max_length=12)
+    budget_range: Optional[str] = Field(default=None, max_length=100)
+    max_participants: Optional[StrictInt] = Field(default=None, ge=2, le=50)
+    visibility: Optional[Literal["public", "private"]] = None
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_group_tags(cls, value: Any) -> list[str] | None:
+        if value is None:
+            return None
+
+        return dedupe_clean_text_list(value)
+
+    @field_validator("budget_range", mode="before")
+    @classmethod
+    def normalize_group_budget(cls, value: Any) -> Any:
+        return normalize_optional_text(value)
+
+
+class GroupVoyage(GroupVoyageBase):
     id: Optional[str] = None
+    creator_id: str
+    participant_ids: List[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 DESTINATION_SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -864,6 +1103,17 @@ class CommunityAuthor(BaseModel):
     location: Optional[str] = Field(default=None, max_length=120)
 
 
+COMMUNITY_TIP_CATEGORY_VALUES = (
+    "Safety",
+    "Food",
+    "Transport",
+    "Hidden Gems",
+    "Scams",
+    "Cultural Etiquette",
+)
+DEFAULT_COMMUNITY_TIP_CATEGORY = "Hidden Gems"
+
+
 class CommunityTipBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -871,6 +1121,14 @@ class CommunityTipBase(BaseModel):
     place_slug: str = Field(..., min_length=2, max_length=100)
     text: str = Field(..., min_length=3, max_length=1200)
     author: CommunityAuthor
+    category: Literal[
+        "Safety",
+        "Food",
+        "Transport",
+        "Hidden Gems",
+        "Scams",
+        "Cultural Etiquette",
+    ] = DEFAULT_COMMUNITY_TIP_CATEGORY
     rating: Optional[float] = Field(default=None, ge=0, le=5)
 
     @field_validator("country_slug", "place_slug")
@@ -879,12 +1137,31 @@ class CommunityTipBase(BaseModel):
         return validate_destination_slug(slug)
 
 
-class CommunityTipCreate(CommunityTipBase):
-    pass
+class CommunityTipCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    country_slug: str = Field(..., min_length=2, max_length=80)
+    place_slug: str = Field(..., min_length=2, max_length=100)
+    text: str = Field(..., min_length=3, max_length=1200)
+    category: Literal[
+        "Safety",
+        "Food",
+        "Transport",
+        "Hidden Gems",
+        "Scams",
+        "Cultural Etiquette",
+    ] = DEFAULT_COMMUNITY_TIP_CATEGORY
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+
+    @field_validator("country_slug", "place_slug")
+    @classmethod
+    def normalize_community_slugs(cls, slug: str) -> str:
+        return validate_destination_slug(slug)
 
 
 class CommunityTip(CommunityTipBase):
     id: Optional[str] = None
+    author_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     moderation_status: Literal["pending", "approved", "rejected"] = "approved"
@@ -898,13 +1175,16 @@ class CommunityReplyBase(BaseModel):
     author: CommunityAuthor
 
 
-class CommunityReplyCreate(CommunityReplyBase):
-    pass
+class CommunityReplyCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    text: str = Field(..., min_length=1, max_length=1000)
 
 
 class CommunityReply(CommunityReplyBase):
     id: Optional[str] = None
     tip_id: str = Field(..., min_length=1)
+    author_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -918,6 +1198,7 @@ class DestinationEventBase(BaseModel):
     place_slug: Optional[str] = Field(default=None, min_length=2, max_length=100)
     date_start: date
     date_end: Optional[date] = None
+    time: Optional[str] = Field(default=None, min_length=1, max_length=40)
     location: str = Field(..., min_length=1, max_length=160)
     description: str = Field(..., min_length=1, max_length=1200)
     media: Optional[DestinationMedia] = None
@@ -937,6 +1218,11 @@ class DestinationEventBase(BaseModel):
 
         return validate_destination_slug(slug)
 
+    @field_validator("category")
+    @classmethod
+    def normalize_event_category(cls, category: str) -> str:
+        return " ".join(category.split())
+
     @model_validator(mode="after")
     def validate_event_dates(self):
         if self.date_end is not None and self.date_end < self.date_start:
@@ -951,6 +1237,11 @@ class DestinationEventCreate(DestinationEventBase):
 
 class DestinationEvent(DestinationEventBase):
     id: Optional[str] = None
+    organizer_id: Optional[str] = None
+    organizer_name: Optional[str] = None
+    participant_count: StrictInt = Field(default=0, ge=0)
+    viewer_has_joined: bool = False
+    viewer_has_saved: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
