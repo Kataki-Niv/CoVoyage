@@ -193,6 +193,40 @@ def validate_profile_picture_reference(value: Optional[str]) -> Optional[str]:
     return value
 
 
+def validate_media_reference(
+    value: Optional[str],
+    local_prefixes: tuple[str, ...],
+    field_label: str,
+) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = value.strip()
+
+    if not value:
+        return None
+
+    if value.startswith(local_prefixes):
+        filename = value.rsplit("/", 1)[-1]
+
+        if (
+            not filename
+            or "/" in filename
+            or "\\" in filename
+            or ".." in filename
+        ):
+            raise ValueError(f"{field_label} URL is invalid")
+
+        return value
+
+    parsed_url = urlparse(value)
+
+    if parsed_url.scheme != "https":
+        raise ValueError(f"{field_label} must be an HTTPS URL or uploaded CoVoyage media")
+
+    return value
+
+
 def is_supported_host(hostname: Optional[str], allowed_hosts: set[str]) -> bool:
     if not hostname:
         return False
@@ -514,6 +548,19 @@ class ProfileImageUpload(BaseModel):
     file_name: Optional[str] = Field(default=None, max_length=240)
     content_type: str = Field(..., min_length=1, max_length=80)
     content_base64: str = Field(..., min_length=1)
+
+
+class JournalMediaUpload(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    media_kind: Literal["image", "video"]
+    file_name: Optional[str] = Field(default=None, max_length=240)
+    content_type: str = Field(..., min_length=1, max_length=80)
+    content_base64: str = Field(..., min_length=1)
+
+
+class JournalMediaUploadResponse(BaseModel):
+    media_url: str
 
 
 class PasswordChangeRequest(BaseModel):
@@ -1253,8 +1300,30 @@ class BlogBase(BaseModel):
     content: str = Field(..., min_length=20, max_length=50000)
     excerpt: Optional[str] = Field(default=None, max_length=300)
     tags: List[str] = Field(default_factory=list, max_length=12)
-    cover_image_url: Optional[HttpUrl] = None
+    category: Optional[Literal["stories", "guides", "photos", "videos", "tips"]] = None
+    format: Literal["text", "photo", "video"] = "text"
+    destination_slug: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    destination_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    cover_image_url: Optional[str] = None
+    media_url: Optional[str] = None
     status: Literal["draft", "published"] = "draft"
+
+    @field_validator("destination_slug")
+    @classmethod
+    def normalize_destination_slug(cls, slug: Optional[str]) -> Optional[str]:
+        if slug is None:
+            return None
+
+        return validate_destination_slug(slug, "Destination slug")
+
+    @field_validator("cover_image_url", "media_url", mode="before")
+    @classmethod
+    def validate_blog_media_url(cls, value: Optional[str]) -> Optional[str]:
+        return validate_media_reference(
+            value,
+            ("/media/journal-media/",),
+            "Journal media",
+        )
 
     @field_validator("tags")
     @classmethod
@@ -1286,9 +1355,31 @@ class BlogUpdate(BaseModel):
     content: Optional[str] = Field(default=None, min_length=20, max_length=50000)
     excerpt: Optional[str] = Field(default=None, max_length=300)
     tags: Optional[List[str]] = Field(default=None, max_length=12)
-    cover_image_url: Optional[HttpUrl] = None
+    category: Optional[Literal["stories", "guides", "photos", "videos", "tips"]] = None
+    format: Optional[Literal["text", "photo", "video"]] = None
+    destination_slug: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    destination_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    cover_image_url: Optional[str] = None
+    media_url: Optional[str] = None
     status: Optional[Literal["draft", "published"]] = None
     slug: Optional[str] = Field(default=None, min_length=3, max_length=120)
+
+    @field_validator("destination_slug")
+    @classmethod
+    def normalize_destination_slug(cls, slug: Optional[str]) -> Optional[str]:
+        if slug is None:
+            return None
+
+        return validate_destination_slug(slug, "Destination slug")
+
+    @field_validator("cover_image_url", "media_url", mode="before")
+    @classmethod
+    def validate_blog_media_url(cls, value: Optional[str]) -> Optional[str]:
+        return validate_media_reference(
+            value,
+            ("/media/journal-media/",),
+            "Journal media",
+        )
 
     @field_validator("tags")
     @classmethod
@@ -1300,7 +1391,7 @@ class BlogUpdate(BaseModel):
 
     @model_validator(mode="after")
     def require_update_field(self):
-        if not self.model_dump(exclude_none=True):
+        if not self.model_dump(exclude_unset=True):
             raise ValueError("At least one blog field must be provided")
 
         return self

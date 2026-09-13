@@ -51,8 +51,12 @@ export function DestinationPage({ destination }: DestinationPageProps) {
       </div>
       <FloatingAiAssistant
         country={destination.country}
+        countrySlug={destination.key}
         flag={destination.flag}
         itineraryFields={destination.itineraryFields}
+        selectedPlaceSlugs={destination.journeyPlaces
+          .map((place) => place.placeSlug)
+          .filter((placeSlug): placeSlug is string => Boolean(placeSlug))}
         variant="icon"
       />
     </main>
@@ -228,9 +232,7 @@ function CuratedJourney({
   destination,
   isDarkEditorial,
 }: DestinationPageProps & { isDarkEditorial: boolean }) {
-  const journeyPlaces = destination.key === "iceland"
-    ? destination.journeyPlaces.filter((place) => place.number !== "04")
-    : destination.journeyPlaces;
+  const journeyPlaces = destination.journeyPlaces;
 
   return (
     <section className="relative overflow-hidden">

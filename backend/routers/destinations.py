@@ -15,6 +15,12 @@ from services.destination_snapshot_service import (
     SnapshotGenerationError,
     publish_monthly_snapshot,
 )
+from services.destination_recommendations import (
+    get_country_recommendations,
+    get_featured_recommendations,
+    load_destination_records,
+    search_supported_destinations,
+)
 
 
 router = APIRouter(prefix="/destinations", tags=["destinations"])
@@ -87,48 +93,93 @@ def get_country_or_404(countries, country_slug: str):
     return country
 
 
-@router.get("/search")
-def search_destinations(q: str = Query(..., min_length=1, max_length=80)):
-    collections = get_destination_collections_or_503()
-    search_pattern = re.compile(re.escape(q.strip()), re.IGNORECASE)
+def get_static_destination_bundle(country_slug: str):
+    countries, places_by_country, factors_by_country_place = load_destination_records()
+    country = countries.get(country_slug)
 
-    countries = [
-        serialize_document(country)
-        for country in collections["countries"]
-        .find(
-            {
-                "$or": [
-                    {"name": search_pattern},
-                    {"slug": search_pattern},
-                ]
-            }
+    if country is None:
+        return None
+
+    monthly_factors = []
+    for (factor_country_slug, _place_slug), factors in factors_by_country_place.items():
+        if factor_country_slug == country_slug:
+            monthly_factors.extend(factors)
+
+    monthly_factors.sort(
+        key=lambda factor: (
+            factor.get("year", 0),
+            factor.get("month", 0),
+            factor.get("place_slug") or "",
         )
-        .sort("name", 1)
-    ]
-    places = [
-        serialize_document(place)
-        for place in collections["places"]
-        .find({"name": search_pattern})
-        .sort([("country_slug", 1), ("name", 1)])
-    ]
+    )
 
     return {
-        "query": q,
-        "countries": countries,
-        "places": places,
+        "country": country,
+        "places": sorted(
+            places_by_country.get(country_slug, []),
+            key=lambda place: place.get("name", ""),
+        ),
+        "monthly_factors": monthly_factors,
     }
+
+
+@router.get("/search")
+def search_destinations(q: str = Query(..., min_length=1, max_length=80)):
+    try:
+        return serialize_mongo_value(search_supported_destinations(q))
+    except Exception:
+        collections = get_destination_collections_or_503()
+        search_pattern = re.compile(re.escape(q.strip()), re.IGNORECASE)
+
+        countries = [
+            serialize_document(country)
+            for country in collections["countries"]
+            .find(
+                {
+                    "$or": [
+                        {"name": search_pattern},
+                        {"slug": search_pattern},
+                    ]
+                }
+            )
+            .sort("name", 1)
+        ]
+        places = [
+            serialize_document(place)
+            for place in collections["places"]
+            .find({"name": search_pattern})
+            .sort([("country_slug", 1), ("name", 1)])
+        ]
+
+        return {
+            "query": q,
+            "countries": countries,
+            "places": places,
+        }
 
 
 @router.get("/featured")
 def get_featured_destinations(
     year: int | None = Query(default=None, ge=2000, le=2100),
     month: int | None = Query(default=None, ge=1, le=12),
+    limit: int = Query(default=3, ge=1, le=10),
 ):
     if (year is None) != (month is None):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="year and month must be provided together",
         )
+
+    try:
+        return serialize_mongo_value(
+            get_featured_recommendations(year=year, month=month, limit=limit)
+        )
+    except Exception:
+        if year is None and month is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Featured destination recommendations are unavailable",
+            )
 
     try:
         monthly_snapshots = get_monthly_snapshots_collection()
@@ -159,9 +210,38 @@ def get_featured_destinations(
         "year": snapshot["year"],
         "month": snapshot["month"],
         "destinations": serialize_mongo_value(
-            snapshot.get("featured_countries", []),
+            snapshot.get("featured_countries", [])[:limit],
         ),
     }
+
+
+@router.get("/{country_slug}/recommendations")
+def get_destination_recommendations(
+    country_slug: str,
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    month: int | None = Query(default=None, ge=1, le=12),
+    limit: int = Query(default=4, ge=1, le=8),
+):
+    if (year is None) != (month is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="year and month must be provided together",
+        )
+
+    recommendations = get_country_recommendations(
+        country_slug,
+        year=year,
+        month=month,
+        limit=limit,
+    )
+
+    if recommendations is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Destination country not found",
+        )
+
+    return serialize_mongo_value(recommendations)
 
 
 @router.post("/snapshots/generate")
@@ -198,37 +278,81 @@ def generate_destination_snapshot(payload: MonthlySnapshotGenerateRequest):
 
 @router.get("/{country_slug}/places")
 def get_destination_places(country_slug: str):
-    collections = get_destination_collections_or_503()
-    get_country_or_404(collections["countries"], country_slug)
+    try:
+        collections = get_destination_collections_or_503()
+        get_country_or_404(collections["countries"], country_slug)
+
+        return [
+            serialize_place_summary(place)
+            for place in collections["places"]
+            .find({"country_slug": country_slug})
+            .sort("name", 1)
+        ]
+    except HTTPException as error:
+        if error.status_code not in (
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ):
+            raise
+
+    static_bundle = get_static_destination_bundle(country_slug)
+
+    if static_bundle is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Destination country not found",
+        )
 
     return [
         serialize_place_summary(place)
-        for place in collections["places"]
-        .find({"country_slug": country_slug})
-        .sort("name", 1)
+        for place in static_bundle["places"]
     ]
 
 
 @router.get("/{country_slug}")
 def get_destination(country_slug: str):
-    collections = get_destination_collections_or_503()
-    country = get_country_or_404(collections["countries"], country_slug)
-    places = list(
-        collections["places"]
-        .find({"country_slug": country_slug})
-        .sort("name", 1)
-    )
-    monthly_factors = list(
-        collections["monthly_factors"]
-        .find({"country_slug": country_slug})
-        .sort([("year", 1), ("month", 1), ("place_slug", 1)])
-    )
+    try:
+        collections = get_destination_collections_or_503()
+        country = get_country_or_404(collections["countries"], country_slug)
+        places = list(
+            collections["places"]
+            .find({"country_slug": country_slug})
+            .sort("name", 1)
+        )
+        monthly_factors = list(
+            collections["monthly_factors"]
+            .find({"country_slug": country_slug})
+            .sort([("year", 1), ("month", 1), ("place_slug", 1)])
+        )
+
+        return {
+            "country": serialize_document(country),
+            "places": [serialize_document(place) for place in places],
+            "monthly_factors": [
+                serialize_document(monthly_factor)
+                for monthly_factor in monthly_factors
+            ],
+        }
+    except HTTPException as error:
+        if error.status_code not in (
+            status.HTTP_404_NOT_FOUND,
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ):
+            raise
+
+    static_bundle = get_static_destination_bundle(country_slug)
+
+    if static_bundle is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Destination country not found",
+        )
 
     return {
-        "country": serialize_document(country),
-        "places": [serialize_document(place) for place in places],
+        "country": serialize_document(static_bundle["country"]),
+        "places": [serialize_document(place) for place in static_bundle["places"]],
         "monthly_factors": [
             serialize_document(monthly_factor)
-            for monthly_factor in monthly_factors
+            for monthly_factor in static_bundle["monthly_factors"]
         ],
     }

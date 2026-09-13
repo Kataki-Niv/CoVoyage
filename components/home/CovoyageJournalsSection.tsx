@@ -123,7 +123,7 @@ export function CovoyageJournalsSection() {
               </Link>
               <Link
                 className="group inline-flex items-center justify-center gap-4 px-2 py-4 text-sm font-semibold text-white/68 transition duration-300 hover:text-white"
-                href="/journal#create-post"
+                href="/journal/create"
               >
                 <span>Share your journey</span>
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />

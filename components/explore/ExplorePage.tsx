@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ExploreSearchForm } from "@/components/explore/ExploreSearchForm";
+import { FloatingAiAssistant } from "@/components/explore/FloatingAiAssistant";
 import type { BackendFeaturedDestinationsResponse } from "@/lib/destinationApi";
 
 type FeaturedCountry = {
@@ -42,6 +43,7 @@ export function ExplorePage({ featuredSnapshot = null }: ExplorePageProps) {
         countries={featuredData.countries}
         monthlyFeature={featuredData.monthlyFeature}
       />
+      <FloatingAiAssistant country="Local Vibe" variant="icon" />
     </main>
   );
 }
@@ -237,11 +239,7 @@ function CountryBackground({ country }: { country: FeaturedCountry }) {
         ? "/destination/gmm.jpg"
         : country.id === "spain"
           ? "/destination/spain.jpg"
-          : null;
-
-  if (!backgroundImage) {
-    return null;
-  }
+          : country.heroImage;
 
   return (
     <div
@@ -339,14 +337,27 @@ type MonthlyFeature = {
   description: string;
 };
 
-const fallbackMonthlyFeature: MonthlyFeature = {
-  month: "August",
-  year: "2026",
-  description:
-    "Three destinations selected for one clear reason this month: scenery, value, or a cultural moment worth planning around.",
-};
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
-const augustFeaturedCountryIds = ["iceland", "guatemala", "spain"] as const;
+const fallbackMonthlyFeature: MonthlyFeature = {
+  month: monthNames[new Date().getMonth()],
+  year: String(new Date().getFullYear()),
+  description:
+    "Three destinations selected for the current month from CoVoyage destination intelligence.",
+};
 
 const fallbackFeaturedCountries: FeaturedCountry[] = [
   {
@@ -523,21 +534,6 @@ const fallbackFeaturedCountries: FeaturedCountry[] = [
   },
 ];
 
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 function getMonthName(month: number) {
   return monthNames[month - 1] ?? fallbackMonthlyFeature.month;
 }
@@ -547,11 +543,7 @@ function formatRank(rank: number) {
 }
 
 function getVisiblePlaces(country: FeaturedCountry) {
-  if (country.id !== "iceland") {
-    return country.places;
-  }
-
-  return country.places.slice(0, 3);
+  return country.places;
 }
 
 function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | null) {
@@ -565,64 +557,64 @@ function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | nul
   const fallbackBySlug = new Map(
     fallbackFeaturedCountries.map((country) => [country.id, country]),
   );
-  const backendDestinationBySlug = new Map(
-    snapshot.destinations.map((destination) => [
-      destination.country_slug,
-      destination,
-    ]),
-  );
   const month = getMonthName(snapshot.month);
   const year = String(snapshot.year);
-  const countries = augustFeaturedCountryIds.map((countryId) => {
+  const countries = snapshot.destinations.slice(0, 3).map((destination) => {
+    const countryId = destination.country_slug;
     const fallback = fallbackBySlug.get(countryId);
-    const destination = backendDestinationBySlug.get(countryId);
-
-    if (!fallback) {
-      throw new Error(`Missing fallback destination for ${countryId}`);
-    }
-
-    if (!destination) {
-      return {
-        ...fallback,
-        month,
-        year,
-      };
-    }
-
-    if (countryId === "iceland") {
-      return {
-        ...fallback,
-        country: destination.country_name ?? fallback.country,
-        month,
-        year,
-        featuredCategory: `Rank ${formatRank(destination.rank)} / Score ${destination.final_score}`,
-        whyThisMonth: `${destination.recommendation_reason} Recommendation score: ${destination.final_score}.`,
-      };
-    }
-
+    const backendPlaces = destination.recommended_places ?? destination.selected_places ?? [];
     const fallbackPlacesBySlug = new Map(
-      fallback.places.map((place) => [
+      (fallback?.places ?? []).map((place) => [
         place.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
         place,
       ]),
     );
+    const baseCountry: FeaturedCountry =
+      fallback ?? {
+        country:
+          destination.country_name ??
+          destination.country?.name ??
+          countryId
+            .split("-")
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(" "),
+        id: countryId,
+        month,
+        year,
+        featuredCategory: "Monthly Pick",
+        featuredHeadline: "A strong CoVoyage recommendation for this month",
+        whyThisMonth: destination.recommendation_reason,
+        heroImage:
+          destination.country?.hero_media?.url ??
+          "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=88",
+        heroImageAlt:
+          destination.country?.hero_media?.alt ??
+          destination.country?.hero_media?.alt_text ??
+          `${destination.country_name ?? countryId} travel scene`,
+        places: [],
+        detailPage: `/explore/${countryId}`,
+      };
 
     return {
-      ...fallback,
-      country: destination.country_name ?? fallback.country,
+      ...baseCountry,
+      country: destination.country_name ?? destination.country?.name ?? baseCountry.country,
       month,
       year,
       featuredCategory: `Rank ${formatRank(destination.rank)} / Score ${destination.final_score}`,
       whyThisMonth: `${destination.recommendation_reason} Recommendation score: ${destination.final_score}.`,
-      places: destination.selected_places.map((place, index) => {
+      places: backendPlaces.map((place, index) => {
         const placeSlug = place.place_slug;
-        const fallbackPlace = fallbackPlacesBySlug.get(placeSlug) ?? fallback.places[index];
+        const fallbackPlace = fallbackPlacesBySlug.get(placeSlug) ?? baseCountry.places[index];
 
         return {
           ...(fallbackPlace ?? {
             image:
+              place.media?.url ??
               "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=86",
-            imageAlt: `${place.place_name ?? place.place_slug} travel scene`,
+            imageAlt:
+              place.media?.alt ??
+              place.media?.alt_text ??
+              `${place.place_name ?? place.place_slug} travel scene`,
             align: index % 2 === 0 ? "left" : "right",
           }),
           number: formatRank(place.rank),

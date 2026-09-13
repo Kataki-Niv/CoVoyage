@@ -11,6 +11,8 @@ export const metadata: Metadata = {
     "Discover destinations, local culture, seasonal travel ideas, and community-inspired guidance with CoVoyage.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ExploreRoute() {
   const featuredSnapshot = await fetchFeaturedDestinations();
 

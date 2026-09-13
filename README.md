@@ -257,6 +257,12 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
+Optional backend environment:
+
+- `GEMINI_API_KEY`: enables Gemini-powered Master the Local Vibe assistant responses. If omitted or if Gemini fails, the backend keeps using the deterministic fallback.
+- `GEMINI_MODEL`: optional model override for the Local Vibe assistant. Defaults to `gemini-2.5-flash`.
+- `GEMINI_FALLBACK_MODELS`: optional comma-separated retry models when the primary Gemini model is temporarily unavailable. Defaults to `gemini-3.5-flash-lite`.
+
 ---
 
 

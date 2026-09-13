@@ -12,6 +12,7 @@ from services.destination_scoring import (
     score_country_destination,
     score_place_destination,
 )
+from services.destination_recommendations import get_featured_recommendations
 
 
 ALGORITHM_VERSION = "mvp-rule-based-v1"
@@ -102,62 +103,8 @@ def build_selected_places(
 
 
 def build_monthly_snapshot(year: int, month: int) -> dict[str, Any]:
-    countries = get_countries_collection()
-    places = get_places_collection()
-    monthly_factors = get_destination_monthly_factors_collection()
-
-    scored_countries = []
-
-    for country in countries.find().sort("name", 1):
-        country_slug = country["slug"]
-        country_monthly_factor = find_country_monthly_factor(
-            monthly_factors,
-            country_slug,
-            year,
-            month,
-        )
-
-        if country_monthly_factor is None:
-            continue
-
-        country_places = list(
-            places.find({"country_slug": country_slug}).sort("name", 1)
-        )
-        country_score = score_country_destination(
-            country,
-            country_monthly_factor,
-            country_places,
-        )
-
-        if country_score.get("status") != "complete":
-            continue
-
-        selected_places = build_selected_places(
-            country_places,
-            monthly_factors,
-            country_monthly_factor,
-            year,
-            month,
-        )
-        scored_countries.append(
-            {
-                "country_slug": country_slug,
-                "country_name": country.get("name"),
-                "final_score": country_score["score"],
-                "recommendation_reason": country_score["reason"],
-                "score_breakdown": country_score["breakdown"],
-                "selected_places": selected_places,
-            }
-        )
-
-    scored_countries.sort(key=lambda country: country["final_score"], reverse=True)
-    featured_countries = [
-        {
-            **country,
-            "rank": index + 1,
-        }
-        for index, country in enumerate(scored_countries)
-    ]
+    recommendations = get_featured_recommendations(year=year, month=month, limit=50)
+    featured_countries = recommendations["destinations"]
 
     if not featured_countries:
         raise SnapshotGenerationError(

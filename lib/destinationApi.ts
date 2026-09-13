@@ -141,22 +141,90 @@ export type BackendFeaturedPlace = {
   score: number;
   recommendation_reason: string;
   score_breakdown: Record<string, number>;
+  seasonal_note?: string;
+  experiences?: string[];
+  local_vibe_notes?: string[];
+  budget_value?: string;
+  media?: BackendMedia | null;
+  place?: BackendPlace;
 };
 
 export type BackendFeaturedDestination = {
   country_slug: string;
+  slug?: string;
   country_name?: string;
+  country?: BackendCountry;
   rank: number;
   final_score: number;
+  score?: number;
   recommendation_reason: string;
+  why_now?: string;
   score_breakdown: Record<string, number>;
   selected_places: BackendFeaturedPlace[];
+  recommended_places?: BackendFeaturedPlace[];
 };
 
 export type BackendFeaturedDestinationsResponse = {
   year: number;
   month: number;
   destinations: BackendFeaturedDestination[];
+};
+
+export type BackendDestinationSearchResponse = {
+  query: string;
+  countries: BackendCountry[];
+  places: BackendPlace[];
+};
+
+export type BackendCountryRecommendationsResponse = {
+  year: number;
+  month: number;
+  country: BackendCountry;
+  recommendations: BackendFeaturedPlace[];
+  monthly_factor?: BackendMonthlyFactor | null;
+};
+
+export type LocalVibeChatResponse = {
+  country_slug: string;
+  country: string;
+  year: number;
+  month: number;
+  message: string;
+  response_source?: "gemini" | "fallback";
+  recommended_places: BackendFeaturedPlace[];
+};
+
+export type LocalVibeDiscoveryChatResponse = {
+  year: number;
+  month: number;
+  message: string;
+  response_source?: "gemini" | "fallback";
+  featured_destinations: BackendFeaturedDestination[];
+};
+
+export type LocalVibeItineraryDay = {
+  day: number;
+  place: string;
+  focus: string;
+  morning: string;
+  afternoon: string;
+  evening: string;
+  local_vibe_note: string;
+};
+
+export type LocalVibeItineraryResponse = {
+  country_slug: string;
+  country: string;
+  year: number;
+  month: number;
+  days: number;
+  budget?: string | null;
+  interests?: string | null;
+  pace?: string | null;
+  recommended_places: BackendFeaturedPlace[];
+  itinerary: LocalVibeItineraryDay[];
+  summary: string;
+  response_source?: "gemini" | "fallback";
 };
 
 export async function fetchDestination(
@@ -207,4 +275,122 @@ export async function fetchFeaturedDestinations(): Promise<BackendFeaturedDestin
     console.error("Featured destinations fetch failed:", error);
     return null;
   }
+}
+
+export async function searchDestinations(
+  query: string,
+): Promise<BackendDestinationSearchResponse> {
+  const response = await fetch(
+    `${DESTINATION_API_BASE_URL}/destinations/search?q=${encodeURIComponent(query)}`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Destination search failed: ${response.status}`);
+  }
+
+  return (await response.json()) as BackendDestinationSearchResponse;
+}
+
+export async function fetchCountryRecommendations(
+  countrySlug: string,
+): Promise<BackendCountryRecommendationsResponse | null> {
+  try {
+    const response = await fetch(
+      `${DESTINATION_API_BASE_URL}/destinations/${encodeURIComponent(countrySlug)}/recommendations`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      console.error(
+        `Destination recommendations fetch failed for ${countrySlug}: ${response.status}`,
+      );
+      return null;
+    }
+
+    return (await response.json()) as BackendCountryRecommendationsResponse;
+  } catch (error) {
+    console.error(`Destination recommendations fetch failed for ${countrySlug}:`, error);
+    return null;
+  }
+}
+
+export async function sendLocalVibeChatMessage(payload: {
+  country_slug: string;
+  country?: string;
+  message: string;
+  year?: number;
+  month?: number;
+  selected_place_slugs?: string[];
+}): Promise<LocalVibeChatResponse> {
+  const response = await fetch(`${DESTINATION_API_BASE_URL}/assistant/local-vibe/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Local vibe chat failed: ${response.status}`);
+  }
+
+  return (await response.json()) as LocalVibeChatResponse;
+}
+
+export async function sendLocalVibeDiscoveryChatMessage(payload: {
+  message: string;
+  year?: number;
+  month?: number;
+}): Promise<LocalVibeDiscoveryChatResponse> {
+  const response = await fetch(`${DESTINATION_API_BASE_URL}/assistant/local-vibe/discovery-chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Local vibe discovery chat failed: ${response.status}`);
+  }
+
+  return (await response.json()) as LocalVibeDiscoveryChatResponse;
+}
+
+export async function generateLocalVibeItinerary(payload: {
+  country_slug: string;
+  country?: string;
+  days: number;
+  budget?: string;
+  interests?: string;
+  pace?: string;
+  year?: number;
+  month?: number;
+  selected_place_slugs?: string[];
+}): Promise<LocalVibeItineraryResponse> {
+  const response = await fetch(
+    `${DESTINATION_API_BASE_URL}/assistant/local-vibe/itinerary`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Local vibe itinerary generation failed: ${response.status}`);
+  }
+
+  return (await response.json()) as LocalVibeItineraryResponse;
 }

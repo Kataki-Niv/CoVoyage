@@ -155,6 +155,7 @@ function buildPlaceFacts(
   fallbackFacts: JourneyFact[],
   place: BackendPlace,
   monthlyFactor: BackendMonthlyFactor | undefined,
+  monthName: string | null,
 ) {
   return fallbackFacts.map((fact) => {
     switch (fact.label) {
@@ -167,6 +168,7 @@ function buildPlaceFacts(
       case "August Note":
         return {
           ...fact,
+          label: monthName ? `${monthName} Note` : "Seasonal Note",
           value:
             monthlyFactor?.accessibility_information ??
             monthlyFactor?.weather_suitability_input ??
@@ -182,6 +184,7 @@ function mapJourneyPlace(
   fallbackPlace: JourneyPlace,
   backendPlace: BackendPlace | undefined,
   monthlyFactor: BackendMonthlyFactor | undefined,
+  monthName: string | null,
 ) {
   if (!backendPlace) {
     return fallbackPlace;
@@ -198,7 +201,12 @@ function mapJourneyPlace(
       backendPlace.story ??
       backendPlace.description ??
       fallbackPlace.story,
-    facts: buildPlaceFacts(fallbackPlace.facts, backendPlace, monthlyFactor),
+    facts: buildPlaceFacts(
+      fallbackPlace.facts,
+      backendPlace,
+      monthlyFactor,
+      monthName,
+    ),
     localVibe: backendPlace.local_vibe_notes?.length
       ? backendPlace.local_vibe_notes
       : fallbackPlace.localVibe,
@@ -216,6 +224,7 @@ function getBackendJourneyPlaces(
 
   const mappedPlaces: JourneyPlace[] = [];
   const usedBackendSlugs = new Set<string>();
+  const monthName = getMonthName(monthlyFactor?.month);
 
   fallbackPlaces.forEach((fallbackPlace) => {
     const backendPlace = backendPlaces.find(
@@ -237,6 +246,7 @@ function getBackendJourneyPlaces(
         },
         backendPlace,
         monthlyFactor,
+        monthName,
       ),
     );
   });
@@ -256,6 +266,7 @@ function getBackendJourneyPlaces(
           },
           backendPlace,
           monthlyFactor,
+          monthName,
         ),
       );
     });

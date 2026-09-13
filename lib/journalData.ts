@@ -7,6 +7,8 @@ export type JournalPostType =
   | "Community Story";
 
 export type JournalFilter = "Stories" | "Guides" | "Photos" | "Videos" | "Tips";
+export type JournalFormat = "Text" | "Photo" | "Video";
+export type JournalContentCategory = "Story" | "Guide" | "Tip";
 
 export type JournalPost = {
   slug: string;
@@ -14,11 +16,14 @@ export type JournalPost = {
   filter: JournalFilter;
   title: string;
   destination: string;
+  format?: JournalFormat;
+  contentCategory?: JournalContentCategory;
   excerpt: string;
   author: string;
   readingTime: string;
   image: string;
   imageAlt: string;
+  mediaUrl?: string;
   featured?: boolean;
   body: string[];
   sections: {

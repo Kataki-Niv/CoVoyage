@@ -2,46 +2,72 @@
 
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
-const supportedDestinations: Record<string, string> = {
-  japan: "/explore/japan",
-  kyoto: "/explore/japan",
-  osaka: "/explore/japan",
-  tokyo: "/explore/japan",
-};
+import { searchDestinations, type BackendCountry } from "@/lib/destinationApi";
 
 export function ExploreSearchForm() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
+  const [countries, setCountries] = useState<BackendCountry[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const normalizedQuery = query.trim();
+
+    if (normalizedQuery.length < 2) {
+      return;
+    }
+
+    let isActive = true;
+
+    const timeout = window.setTimeout(() => {
+      searchDestinations(normalizedQuery)
+        .then((result) => {
+          if (!isActive) {
+            return;
+          }
+
+          setCountries(result.countries);
+          setMessage(result.countries.length ? "" : "No supported countries found.");
+        })
+        .catch(() => {
+          if (isActive) {
+            setCountries([]);
+            setMessage("Destination search is unavailable right now.");
+          }
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsSearching(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeout);
+    };
+  }, [query]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedQuery = query.trim().toLowerCase();
-    const compactQuery = normalizedQuery.replace(/[^a-z]/g, "");
-    const destinationRoute = supportedDestinations[normalizedQuery];
-    const compactDestinationRoute = supportedDestinations[compactQuery];
+    const exactCountry = countries.find((country) => {
+      const countryName = country.name?.toLowerCase() ?? "";
+      return country.slug === normalizedQuery || countryName === normalizedQuery;
+    });
+    const country = exactCountry ?? countries[0];
 
-    if (destinationRoute || compactDestinationRoute) {
+    if (country) {
       setMessage("");
-      router.push(destinationRoute ?? compactDestinationRoute);
+      router.push(`/explore/${country.slug}`);
       return;
     }
 
-    const destinationSlug = normalizedQuery
-      .replace(/&/g, "and")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    if (destinationSlug) {
-      setMessage("");
-      router.push(`/explore/${destinationSlug}`);
-      return;
-    }
-
-    setMessage("Enter a destination to search.");
+    setMessage(normalizedQuery ? "No supported countries found." : "Enter a destination to search.");
   };
 
   return (
@@ -59,9 +85,16 @@ export function ExploreSearchForm() {
           aria-label="Search destinations"
           className="h-full min-w-0 flex-1 bg-transparent text-base text-[#F5F1E8] outline-none placeholder:text-white/45"
           onChange={(event) => {
-            setQuery(event.target.value);
+            const nextQuery = event.target.value;
+            setQuery(nextQuery);
             if (message) {
               setMessage("");
+            }
+            if (nextQuery.trim().length < 2) {
+              setCountries([]);
+              setIsSearching(false);
+            } else {
+              setIsSearching(true);
             }
           }}
           placeholder="Search countries, cities or regions..."
@@ -76,6 +109,30 @@ export function ExploreSearchForm() {
         >
           {message}
         </p>
+      ) : null}
+      {isSearching ? (
+        <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-white/70">
+          Searching CoVoyage destinations...
+        </p>
+      ) : null}
+      {countries.length ? (
+        <div className="mt-3 border border-white/14 bg-black/58 p-2 backdrop-blur">
+          {countries.slice(0, 5).map((country) => (
+            <button
+              className="block w-full px-3 py-3 text-left text-sm text-[#F5F1E8] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A]"
+              key={country.slug}
+              onClick={() => router.push(`/explore/${country.slug}`)}
+              type="button"
+            >
+              <span className="font-medium">{country.name ?? country.slug}</span>
+              {country.region ? (
+                <span className="ml-2 text-xs uppercase tracking-[0.16em] text-[#D8BE8A]/75">
+                  {country.region}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
       ) : null}
     </form>
   );
