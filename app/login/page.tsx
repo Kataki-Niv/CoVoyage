@@ -15,6 +15,16 @@ import {
   storeAuth,
 } from "@/lib/api";
 
+function getSafeReturnTo() {
+  const returnToParam = new URLSearchParams(window.location.search).get(
+    "returnTo",
+  );
+
+  return returnToParam?.startsWith("/") && !returnToParam.startsWith("//")
+    ? returnToParam
+    : "/profile";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -40,7 +50,7 @@ export default function LoginPage() {
 
       try {
         await apiRequest<AuthSessionResponse>("/auth/session", { token });
-        router.replace("/profile");
+        router.replace(getSafeReturnTo());
       } catch {
         if (isMounted) {
           setIsCheckingSession(false);
@@ -75,7 +85,7 @@ export default function LoginPage() {
       const loginResponse = await loginUser(formData);
 
       storeAuth(loginResponse);
-      router.push("/profile");
+      router.push(getSafeReturnTo());
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.detail : "Login failed.",

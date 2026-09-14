@@ -103,6 +103,21 @@ def get_trips_collection():
     return trips
 
 
+def get_backpack_items_collection():
+    if database is None:
+        connect_to_mongodb()
+
+    backpack_items = database["backpack_items"]
+    backpack_items.create_index("user_id")
+    backpack_items.create_index("product_slug")
+    backpack_items.create_index(
+        "user_product_key",
+        unique=True,
+        name="backpack_user_product_unique",
+    )
+    return backpack_items
+
+
 def get_chats_collection():
     if database is None:
         connect_to_mongodb()

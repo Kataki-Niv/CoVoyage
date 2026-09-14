@@ -30,7 +30,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
       const token = getValidAuthToken();
 
       if (!token) {
-        router.replace("/login");
+        router.replace(
+          `/login?returnTo=${encodeURIComponent(pathname || "/profile")}`,
+        );
         return;
       }
 
@@ -43,7 +45,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
       } catch (caughtError) {
         if (caughtError instanceof ApiError && caughtError.status === 401) {
           clearAuth();
-          router.replace("/login");
+          router.replace(
+            `/login?returnTo=${encodeURIComponent(pathname || "/profile")}`,
+          );
           return;
         }
 

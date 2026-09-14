@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 
 from database import (
     get_account_tokens_collection,
+    get_backpack_items_collection,
     get_connection_requests_collection,
     get_profiles_collection,
     get_tribe_blocks_collection,
@@ -59,6 +60,16 @@ def get_tribe_blocks_or_503():
 def get_account_tokens_or_503():
     try:
         return get_account_tokens_collection()
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        ) from error
+
+
+def get_backpack_items_or_503():
+    try:
+        return get_backpack_items_collection()
     except Exception as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

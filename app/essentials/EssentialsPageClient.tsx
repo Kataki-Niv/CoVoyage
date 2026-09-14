@@ -19,41 +19,43 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import { products } from "../shop/productData";
+
 const destinations = [
   {
     name: "Japan",
     image:
       "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=86",
-    essentials: ["Cash pouch", "Pocket Wi-Fi", "Compact umbrella", "Rail-ready daypack"],
+    essentials: ["Passport Holder", "Universal Travel Adapter", "Compact Power Bank", "Travel Document Organizer"],
   },
   {
     name: "Iceland",
     image:
       "https://images.unsplash.com/photo-1504829857797-ddff29c27927?auto=format&fit=crop&w=1200&q=86",
-    essentials: ["Waterproof shell", "Thermal layers", "Power bank", "Trail bottle"],
+    essentials: ["Lightweight Travel Blanket", "Compact Daypack", "Reusable Water Bottle", "Compact Power Bank"],
   },
   {
     name: "Italy",
     image:
       "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1200&q=86",
-    essentials: ["Walking shoes", "Light scarf", "Plug adapter", "Document wallet"],
+    essentials: ["Lightweight Luggage Organizer", "Passport Holder", "Universal Travel Adapter", "Reusable Water Bottle"],
   },
   {
     name: "Thailand",
     image:
       "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1200&q=86",
-    essentials: ["Breathable layers", "Reef-safe sunscreen", "Dry pouch", "Electrolytes"],
+    essentials: ["Compact Daypack", "Reusable Water Bottle", "Lightweight Luggage Organizer", "Memory Foam Travel Pillow"],
   },
 ];
 
 const categories = [
-  { name: "Travel Gear", icon: BriefcaseBusiness },
-  { name: "Electronics", icon: Usb },
-  { name: "Clothing", icon: Shirt },
-  { name: "Personal Care", icon: HeartPulse },
-  { name: "Documents & Travel", icon: FileText },
-  { name: "Travel Safety", icon: ShieldCheck },
-  { name: "Day-trip Essentials", icon: Sun },
+  { name: "Travel Gear", filter: "Packing", icon: BriefcaseBusiness },
+  { name: "Electronics", filter: "Tech", icon: Usb },
+  { name: "Clothing", filter: "Comfort", icon: Shirt },
+  { name: "Personal Care", filter: "Outdoor", icon: HeartPulse },
+  { name: "Documents & Travel", filter: "Organization", icon: FileText },
+  { name: "Travel Safety", filter: "Organization", icon: ShieldCheck },
+  { name: "Day-trip Essentials", filter: "Outdoor", icon: Sun },
 ];
 
 const checklistItems = [
@@ -64,72 +66,32 @@ const checklistItems = [
   "Essential medications",
   "Offline maps",
   "Emergency contacts",
+  "Accommodation details",
 ];
 
-const essentials = [
-  {
-    name: "Universal Travel Adapter",
-    category: "Electronics",
-    description: "One compact hub for keeping devices charged across regions.",
-    image:
-      "https://images.unsplash.com/photo-1603539444875-76e7684265f6?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Compact Power Bank",
-    category: "Electronics",
-    description: "Backup power for maps, tickets, translation, and long transfer days.",
-    image:
-      "https://images.unsplash.com/photo-1609592806596-b43a661a5f78?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Packing Cubes",
-    category: "Travel Gear",
-    description: "A simple way to separate clean layers, laundry, and city outfits.",
-    image:
-      "https://images.unsplash.com/photo-1553531384-cc64ac80f931?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Lightweight Daypack",
-    category: "Day-trip Essentials",
-    description: "Room for water, layers, camera gear, snacks, and small purchases.",
-    image:
-      "https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Reusable Water Bottle",
-    category: "Personal Care",
-    description: "A durable bottle for airport refills, city walks, and trail days.",
-    image:
-      "https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Travel Organizer",
-    category: "Documents & Travel",
-    description: "Keeps tickets, passport copies, cards, SIM tools, and receipts together.",
-    image:
-      "https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Neck Pillow",
-    category: "Travel Gear",
-    description: "Soft support for overnight flights, long buses, and recovery naps.",
-    image:
-      "https://images.unsplash.com/photo-1520437358207-323b43b50729?auto=format&fit=crop&w=900&q=86",
-  },
-  {
-    name: "Portable Luggage Scale",
-    category: "Travel Safety",
-    description: "A tiny pre-airport check that avoids stressful baggage surprises.",
-    image:
-      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=86",
-  },
-];
+const curatedEssentials = products.slice(0, 8);
 
-const tomorrowItems = [
-  "Compact Power Bank",
-  "Universal Adapter",
-  "Packing Cubes",
-  "Toiletry Kit",
+const travelProblemItems = [
+  {
+    problem: "Dead phone days",
+    solution: "Power banks, adapters, and cable setups that keep maps and tickets close.",
+    icon: BatteryCharging,
+  },
+  {
+    problem: "Overpacked luggage",
+    solution: "Compression, pouches, and organizers that make one bag feel calmer.",
+    icon: BriefcaseBusiness,
+  },
+  {
+    problem: "Long-haul discomfort",
+    solution: "Soft layers and comfort pieces for planes, buses, and late check-ins.",
+    icon: HeartPulse,
+  },
+  {
+    problem: "Messy small items",
+    solution: "Simple storage for documents, toiletries, chargers, and daily carry.",
+    icon: ShieldCheck,
+  },
 ];
 
 export function EssentialsPageClient() {
@@ -250,10 +212,13 @@ function DestinationEssentials() {
                     </li>
                   ))}
                 </ul>
-                <button className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/72 transition-colors group-hover:text-white" type="button">
+                <Link
+                  className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/72 transition-colors group-hover:text-white"
+                  href={`/shop?destination=${encodeURIComponent(destination.name)}`}
+                >
                   View {destination.name} Essentials
                   <ArrowRight className="h-4 w-4" />
-                </button>
+                </Link>
               </div>
             </article>
           ))}
@@ -269,17 +234,17 @@ function Categories() {
       <div className="mx-auto max-w-7xl">
         <h2 className="font-serif text-4xl text-white">Essential Categories</h2>
         <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          {categories.map(({ icon: Icon, name }) => (
-            <button
+          {categories.map(({ filter, icon: Icon, name }) => (
+            <Link
               className="group flex min-h-32 flex-col justify-between border border-white/10 bg-white/[0.035] p-4 text-left transition-colors hover:border-white/30 hover:bg-white/[0.07]"
+              href={`/shop?category=${encodeURIComponent(filter)}`}
               key={name}
-              type="button"
             >
               <Icon className="h-6 w-6 text-[#d8b7aa]" strokeWidth={1.5} />
               <span className="text-sm font-semibold text-white/78 group-hover:text-white">
                 {name}
               </span>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
@@ -341,7 +306,7 @@ function BeforeYouFly({
 
 function CuratedEssentials() {
   return (
-    <section className="px-5 pb-16 sm:px-8 lg:pb-24">
+    <section className="px-5 pb-16 sm:px-8 lg:pb-24" id="curated-essentials">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -353,19 +318,19 @@ function CuratedEssentials() {
             </h2>
           </div>
           <p className="max-w-md text-sm leading-7 text-white/60">
-            Mock products only. No checkout, cart, payment, or external product
-            API is connected.
+            Save useful items to your essentials bag while you plan. Checkout
+            and payment are not connected for this MVP.
           </p>
         </div>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {essentials.map((item) => (
+          {curatedEssentials.map((item) => (
             <article
               className="group overflow-hidden border border-white/10 bg-[#111]"
-              key={item.name}
+              key={item.slug}
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image
-                  alt={item.name}
+                  alt={item.imageAlt}
                   className="object-cover transition duration-700 group-hover:scale-105"
                   fill
                   sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
@@ -382,10 +347,13 @@ function CuratedEssentials() {
                 <p className="mt-3 text-sm leading-6 text-white/58">
                   {item.description}
                 </p>
-                <button className="mt-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/62 transition-colors group-hover:text-white" type="button">
+                <Link
+                  className="mt-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/62 transition-colors group-hover:text-white"
+                  href={`/shop/${item.slug}`}
+                >
                   View Essential
                   <ArrowRight className="h-4 w-4" />
-                </button>
+                </Link>
               </div>
             </article>
           ))}
@@ -415,13 +383,13 @@ function LocalKnowledge() {
             Many smaller restaurants and local businesses may still prefer
             cash, so carrying some yen can be useful.
           </p>
-          <a
+          <Link
             className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white"
-            href="#japan-essentials"
+            href="/vibe"
           >
             More destination tips
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
@@ -435,23 +403,33 @@ function LeavingTomorrow() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#d8b7aa]">
-              Leaving Tomorrow?
+              Travel Problems We Solve
             </p>
             <h2 className="mt-3 font-serif text-5xl text-white">
-              Pack the high-impact things first.
+              Choose essentials by the friction they remove.
             </h2>
           </div>
           <Plane className="h-10 w-10 text-white/30" strokeWidth={1.4} />
         </div>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {tomorrowItems.map((item) => (
-            <div
-              className="flex items-center justify-between border border-white/10 bg-black/22 px-4 py-4 text-sm text-white/76"
-              key={item}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {travelProblemItems.map(({ icon: Icon, problem, solution }) => (
+            <article
+              className="flex min-h-56 flex-col border border-white/10 bg-black/24 p-5"
+              key={problem}
             >
-              {item}
-              <BatteryCharging className="h-4 w-4 text-[#d8b7aa]" />
-            </div>
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#d8b7aa]">
+                  Problem
+                </p>
+                <Icon className="h-5 w-5 text-[#d8b7aa]" strokeWidth={1.5} />
+              </div>
+              <h3 className="mt-5 font-serif text-3xl leading-tight text-white">
+                {problem}
+              </h3>
+              <p className="mt-4 text-sm leading-6 text-white/58">
+                {solution}
+              </p>
+            </article>
           ))}
         </div>
       </div>

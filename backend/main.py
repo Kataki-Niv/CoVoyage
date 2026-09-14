@@ -30,11 +30,13 @@ from dependencies import (
 from jwt_handler import create_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from routers.assistant import router as assistant_router
+from routers.backpack import router as backpack_router
 from routers.blogs import router as blogs_router
 from routers.chats import router as chats_router
 from routers.community import router as community_router
 from routers.connections import router as connections_router
 from routers.destinations import router as destinations_router
+from routers.essentials import router as essentials_router
 from routers.events import router as events_router
 from routers.group_voyages import router as group_voyages_router
 from routers.matches import router as matches_router
@@ -122,6 +124,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(blogs_router)
+app.include_router(backpack_router)
+app.include_router(essentials_router)
 app.include_router(assistant_router)
 app.include_router(destinations_router)
 app.include_router(community_router)

@@ -669,6 +669,42 @@ class Trip(TripBase):
     id: Optional[str] = None
 
 
+class BackpackItemCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    product_slug: str = Field(..., min_length=2, max_length=120)
+    quantity: StrictInt = Field(default=1, ge=1, le=99)
+
+    @field_validator("product_slug")
+    @classmethod
+    def normalize_product_slug(cls, product_slug: str) -> str:
+        normalized_slug = product_slug.strip().lower()
+
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", normalized_slug):
+            raise ValueError("Product slug is invalid")
+
+        return normalized_slug
+
+
+class BackpackItemUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    quantity: StrictInt = Field(..., ge=1, le=99)
+
+
+class BackpackItem(BaseModel):
+    id: str
+    user_id: str
+    product_slug: str
+    quantity: StrictInt = Field(..., ge=1, le=99)
+    unit_price_cents: StrictInt = Field(..., ge=0)
+    line_total_cents: StrictInt = Field(..., ge=0)
+    currency: str = Field(..., min_length=3, max_length=3)
+    product: Optional[dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class ChatConversationCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
