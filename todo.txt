@@ -1,113 +1,13 @@
-Master the Local Vibe — remaining MVP work
+for masters
+1. Add backend requirements/install documentation
+2. Clean and update README
+3. Clearly document real vs seeded/fallback functionality
+4. Make the strongest AI flow the main demo story
 
-1. Trips / Save Itinerary — biggest gap
-
-Add the ability to save a generated itinerary as a Trip.
-Add a basic My Trips / Saved Trips view.
-Allow at least basic management, especially viewing and deleting saved trips.
-
-The audit explicitly calls this the biggest Local Vibe MVP gap.
-
-2. Events — finish the basic user flow
-
-Wire the existing Save/Bookmark Event functionality into the frontend.
-Make sure there are actual events available for the destinations rather than empty backend results.
-The current Discover → View → Join flow exists, but the participation side is still incomplete.
-
-For MVP, I would not build some huge event-management system. We just need the core event experience to feel real.
-
-3. Community Tips — make moderation minimally usable
-
-Backend moderation already exists.
-What's missing is a very simple admin/moderation interface for approve/reject.
-We also need enough approved tips populated so the feature doesn't look empty.
-
-4. Local Vibe content surfaces
-The audit says customs, food recommendations, hidden gems, and local hacks are present in pieces, but aren't fully developed as distinct surfaces.
-
-For MVP, I'd consolidate rather than overbuild here. We don't need four enormous systems; we need the destination page to provide genuinely useful local information.
-
-5. AI itinerary refinement
-Generation + chat works, but a proper "Refine My Plan" flow isn't there yet.
-
-I'd put this lower priority because the current itinerary generation itself works. We can decide later whether
-
-# 🤝 Find Your Tribe
-
-31. Add notifications/indicators for incoming connection requests
-32. Add notifications/indicators for Group Voyage requests
-33. Populate Group Voyages with sample/demo voyages
-34. Improve activity compatibility
-35. Improve integration between events and traveller connections
-
-# 📝 CoVoyage Journals
-
-36. Connect Journal UI to the real backend
-37. Real journal creation
-38. Real journal publishing
-39. Published journals appearing in the feed
-40. Real individual journal/article pages
-41. Author association
-42. Destination association
-43. Categories/tags
-44. Edit journals
-45. Delete journals
-46. Save drafts
-47. My Journals
-48. Journal search/filtering
-49. Related/featured journal discovery
-
-# 🛍️ CoVoyage Shop
-
-50. Improve product catalogue
-51. Product search
-52. Product recommendations
-53. Functional Add to Bag
-54. Cart/Bag
-55. Change quantity
-56. Remove items
-57. Cart total
-58. Destination-specific travel essentials
-59. Trip-type-specific essentials
-60. Last-minute travel recommendations
-61. Connect recommendations with trip/planning context
-62. Basic checkout experience
-63. Order confirmation
-
-
-Gemini issue:
-Yes. I checked both, and the problem is very likely in Covoyage’s Gemini API request shape, not the API key.
-Zenith works because it uses the official JS SDK:
-- [zenith app/api/gemini-explanation/route.ts (line 1)](/C:/Users/KIIT0001/OneDrive/Desktop/project-zenith/zenith-app/app/api/gemini-explanation/route.ts:1) imports @google/generative-ai
-- It reads process.env.GEMINI_API_KEY
-- It calls getGenerativeModel({ model: "gemini-2.5-flash" })
-- Then model.generateContent(prompt)
-Covoyage is different:
-- [covoyage backend/services/gemini_local_vibe.py (line 23)](/C:/covoyage/backend/services/gemini_local_vibe.py:23) defaults to gemini-3.8-flash
-- [same file (line 25)](/C:/covoyage/backend/services/gemini_local_vibe.py:25) posts to:
-  https://generativelanguage.googleapis.com/v1beta/interactions
-- But Google’s current Interactions REST docs show:
-  https://generativelanguage.googleapis.com/v1beta2/interactions
-- Also, for structured output, Google says response_format should be a top-level array, but Covoyage sends it as a single object at [gemini_local_vibe.py (line 389)](/C:/covoyage/backend/services/gemini_local_vibe.py:389).
-So the likely Covoyage issues are:
-1. Wrong Interactions API version
-   v1beta/interactions should be v1beta2/interactions.
-2. Wrong response_format structure for itinerary generation
-   Covoyage sends:
-   request_body["response_format"] = {
-       "type": "text",
-       "mime_type": "application/json",
-       "schema": response_schema,
-   }
-   It should be:
-   request_body["response_format"] = [
-       {
-           "type": "text",
-           "mime_type": "application/json",
-           "schema": response_schema,
-       }
-   ]
-3. Covoyage hides the failure
-   In [backend/routers/assistant.py (line 248)](/C:/covoyage/backend/routers/assistant.py:248) and [backend/routers/assistant.py (line 320)](/C:/covoyage/backend/routers/assistant.py:320), Gemini errors are caught and replaced with deterministic fallback answers. So the UI does not crash; it just silently stops being Gemini-powered.
-Your .env is not the obvious problem: Covoyage has GEMINI_API_KEY, same base env name Zenith uses.
-Source checked: Google Gemini Interactions docs show v1beta2/interactions and response_format as an array in the REST examples: https://ai.google.dev/gemini-api/docs/migrate-to-interactions#structured-output
+for startup 
+1. Make sure the app starts reliably with the correct env/config.
+2. Seed enough users/profiles so Tribe & Group Voyages don't look empty.
+3. Ensure Gemini is configured for the demo, or clearly show fallback behavior.
+4. Don't present Essentials as live ecommerce/checkout.
+5. Demo Local Vibe through Explore → Destination → AI, not the mostly-static /vibe page.
+6. Clean README/setup instructions.

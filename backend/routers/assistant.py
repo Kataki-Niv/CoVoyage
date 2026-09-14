@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 
@@ -20,9 +20,14 @@ from services.gemini_local_vibe import (
     generate_itinerary as generate_gemini_itinerary,
     log_gemini_fallback,
 )
+from services.rate_limiter import enforce_rate_limit
 
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
+LOCAL_VIBE_CHAT_RATE_LIMIT = 12
+LOCAL_VIBE_DISCOVERY_CHAT_RATE_LIMIT = 12
+LOCAL_VIBE_ITINERARY_RATE_LIMIT = 6
+LOCAL_VIBE_RATE_LIMIT_WINDOW_SECONDS = 60
 
 
 class LocalVibeChatRequest(BaseModel):
@@ -70,6 +75,13 @@ MONTH_NAMES = [
 
 def month_name(month: int) -> str:
     return MONTH_NAMES[month - 1]
+
+
+def request_actor_key(request: Request) -> str:
+    if request.client and request.client.host:
+        return request.client.host
+
+    return "unknown-client"
 
 
 def selected_recommendations(
@@ -317,8 +329,14 @@ def selected_destination_context(
 
 
 @router.post("/local-vibe/chat")
-def local_vibe_chat(request: LocalVibeChatRequest):
-    context, year, month, country_name, places = selected_destination_context(request)
+def local_vibe_chat(payload: LocalVibeChatRequest, request: Request):
+    enforce_rate_limit(
+        "local-vibe-chat",
+        request_actor_key(request),
+        limit=LOCAL_VIBE_CHAT_RATE_LIMIT,
+        window_seconds=LOCAL_VIBE_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    context, year, month, country_name, places = selected_destination_context(payload)
     monthly_factor = dict(context.get("monthly_factor") or {})
     monthly_factor["_country_etiquette_notes"] = context["country"].get(
         "etiquette_notes"
@@ -337,7 +355,7 @@ def local_vibe_chat(request: LocalVibeChatRequest):
     try:
         answer = generate_chat_message(
             assistant_context,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "gemini"
     except GeminiAssistantError as error:
@@ -348,7 +366,7 @@ def local_vibe_chat(request: LocalVibeChatRequest):
             month=month,
             monthly_factor=monthly_factor,
             places=places,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "fallback"
     except Exception as error:
@@ -359,13 +377,13 @@ def local_vibe_chat(request: LocalVibeChatRequest):
             month=month,
             monthly_factor=monthly_factor,
             places=places,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "fallback"
 
     return jsonable_encoder(
         {
-        "country_slug": request.country_slug,
+        "country_slug": payload.country_slug,
         "country": country_name,
         "year": year,
         "month": month,
@@ -378,13 +396,19 @@ def local_vibe_chat(request: LocalVibeChatRequest):
 
 
 @router.post("/local-vibe/discovery-chat")
-def local_vibe_discovery_chat(request: LocalVibeDiscoveryChatRequest):
+def local_vibe_discovery_chat(payload: LocalVibeDiscoveryChatRequest, request: Request):
+    enforce_rate_limit(
+        "local-vibe-discovery-chat",
+        request_actor_key(request),
+        limit=LOCAL_VIBE_DISCOVERY_CHAT_RATE_LIMIT,
+        window_seconds=LOCAL_VIBE_RATE_LIMIT_WINDOW_SECONDS,
+    )
     featured_snapshot = get_featured_recommendations(
-        year=request.year,
-        month=request.month,
+        year=payload.year,
+        month=payload.month,
         limit=5,
     )
-    year, month = resolve_year_month(request.year, request.month)
+    year, month = resolve_year_month(payload.year, payload.month)
     assistant_context = build_discovery_context(
         featured_snapshot,
         year=year,
@@ -394,7 +418,7 @@ def local_vibe_discovery_chat(request: LocalVibeDiscoveryChatRequest):
     try:
         answer = generate_discovery_chat_message(
             assistant_context,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "gemini"
     except GeminiAssistantError as error:
@@ -403,7 +427,7 @@ def local_vibe_discovery_chat(request: LocalVibeDiscoveryChatRequest):
             featured_snapshot=featured_snapshot,
             year=year,
             month=month,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "fallback"
     except Exception as error:
@@ -412,7 +436,7 @@ def local_vibe_discovery_chat(request: LocalVibeDiscoveryChatRequest):
             featured_snapshot=featured_snapshot,
             year=year,
             month=month,
-            user_message=request.message,
+            user_message=payload.message,
         )
         response_source = "fallback"
 
@@ -429,9 +453,15 @@ def local_vibe_discovery_chat(request: LocalVibeDiscoveryChatRequest):
 
 
 @router.post("/local-vibe/itinerary")
-def local_vibe_itinerary(request: LocalVibeItineraryRequest):
+def local_vibe_itinerary(payload: LocalVibeItineraryRequest, request: Request):
+    enforce_rate_limit(
+        "local-vibe-itinerary",
+        request_actor_key(request),
+        limit=LOCAL_VIBE_ITINERARY_RATE_LIMIT,
+        window_seconds=LOCAL_VIBE_RATE_LIMIT_WINDOW_SECONDS,
+    )
     context, year, month, country_name, selected_places = selected_destination_context(
-        request
+        payload
     )
     places = selected_places[:4]
 
@@ -449,7 +479,7 @@ def local_vibe_itinerary(request: LocalVibeItineraryRequest):
         month_label=month_name(month),
     )
     summary = (
-        f"A {request.days}-day {request.pace or 'balanced'} {country_name} itinerary for "
+        f"A {payload.days}-day {payload.pace or 'balanced'} {country_name} itinerary for "
         f"{month_name(month)} {year}, built from CoVoyage's monthly destination recommendations."
     )
     gemini_model = None
@@ -460,10 +490,10 @@ def local_vibe_itinerary(request: LocalVibeItineraryRequest):
     try:
         gemini_generation = generate_gemini_itinerary(
             assistant_context,
-            days=request.days,
-            budget=request.budget,
-            interests=request.interests,
-            pace=request.pace,
+            days=payload.days,
+            budget=payload.budget,
+            interests=payload.interests,
+            pace=payload.pace,
         )
         summary = gemini_generation.response.summary
         itinerary = [
@@ -479,14 +509,14 @@ def local_vibe_itinerary(request: LocalVibeItineraryRequest):
         log_gemini_fallback("itinerary", error)
         itinerary = build_deterministic_itinerary(
             places=places,
-            days_count=request.days,
+            days_count=payload.days,
         )
         response_source = "fallback"
     except Exception as error:
         log_gemini_fallback("itinerary", error)
         itinerary = build_deterministic_itinerary(
             places=places,
-            days_count=request.days,
+            days_count=payload.days,
         )
         response_source = "fallback"
 
@@ -498,14 +528,14 @@ def local_vibe_itinerary(request: LocalVibeItineraryRequest):
 
     return jsonable_encoder(
         {
-        "country_slug": request.country_slug,
+        "country_slug": payload.country_slug,
         "country": country_name,
         "year": year,
         "month": month,
-        "days": request.days,
-        "budget": request.budget,
-        "interests": request.interests,
-        "pace": request.pace or "Balanced",
+        "days": payload.days,
+        "budget": payload.budget,
+        "interests": payload.interests,
+        "pace": payload.pace or "Balanced",
         "recommended_places": places,
         "itinerary": itinerary,
         "summary": summary,

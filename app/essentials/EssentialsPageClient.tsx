@@ -115,7 +115,6 @@ export function EssentialsPageClient() {
       <Categories />
       <BeforeYouFly checkedItems={checkedItems} onToggle={toggleItem} />
       <CuratedEssentials />
-      <LocalKnowledge />
       <LeavingTomorrow />
       <FinalCta />
     </main>
@@ -357,39 +356,6 @@ function CuratedEssentials() {
               </div>
             </article>
           ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function LocalKnowledge() {
-  return (
-    <section className="px-5 py-16 sm:px-8 lg:py-20">
-      <div className="mx-auto grid max-w-7xl gap-8 border border-[#d8b7aa]/18 bg-[#2a211d] p-7 sm:p-10 lg:grid-cols-[0.42fr_0.58fr] lg:p-12">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#d8b7aa]">
-            Local Knowledge
-          </p>
-          <h2 className="mt-4 font-serif text-5xl leading-tight text-white">
-            A little local knowledge goes a long way.
-          </h2>
-        </div>
-        <div className="self-end">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/50">
-            Heading to Japan?
-          </p>
-          <p className="mt-4 text-lg leading-8 text-white/72">
-            Many smaller restaurants and local businesses may still prefer
-            cash, so carrying some yen can be useful.
-          </p>
-          <Link
-            className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white"
-            href="/vibe"
-          >
-            More destination tips
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </section>
