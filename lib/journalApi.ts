@@ -1,7 +1,7 @@
 import { apiRequest } from "@/lib/api";
 
 export type JournalStatus = "draft" | "published";
-export type JournalBackendCategory = "stories" | "guides" | "tips";
+export type JournalBackendCategory = "stories" | "guides" | "media" | "tips";
 export type JournalBackendFormat = "text" | "photo" | "video";
 
 export type Blog = {

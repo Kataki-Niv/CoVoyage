@@ -5,21 +5,17 @@ import {
   BatteryCharging,
   BriefcaseBusiness,
   Check,
-  FileText,
   HeartPulse,
   MapPin,
   Plane,
   Search,
   ShieldCheck,
-  Shirt,
-  Sun,
-  Usb,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
-import { products } from "../shop/productData";
+import { products, type ProductCategory } from "../shop/productData";
 
 const destinations = [
   {
@@ -48,16 +44,6 @@ const destinations = [
   },
 ];
 
-const categories = [
-  { name: "Travel Gear", filter: "Packing", icon: BriefcaseBusiness },
-  { name: "Electronics", filter: "Tech", icon: Usb },
-  { name: "Clothing", filter: "Comfort", icon: Shirt },
-  { name: "Personal Care", filter: "Outdoor", icon: HeartPulse },
-  { name: "Documents & Travel", filter: "Organization", icon: FileText },
-  { name: "Travel Safety", filter: "Organization", icon: ShieldCheck },
-  { name: "Day-trip Essentials", filter: "Outdoor", icon: Sun },
-];
-
 const checklistItems = [
   "Passport & documents",
   "Travel insurance",
@@ -69,7 +55,9 @@ const checklistItems = [
   "Accommodation details",
 ];
 
-const curatedEssentials = products.slice(0, 8);
+const curatedEssentials = products;
+const productFilters = ["All", "Packing", "Tech", "Comfort", "Outdoor", "Organization"] as const;
+type ProductFilter = "All" | ProductCategory;
 
 const travelProblemItems = [
   {
@@ -112,7 +100,6 @@ export function EssentialsPageClient() {
     <main className="bg-[#050505] text-[#f8f4ea]">
       <Hero />
       <DestinationEssentials />
-      <Categories />
       <BeforeYouFly checkedItems={checkedItems} onToggle={toggleItem} />
       <CuratedEssentials />
       <LeavingTomorrow />
@@ -129,7 +116,7 @@ function Hero() {
           <p className="text-xs font-semibold uppercase tracking-[0.38em] text-white/52">
             COVOYAGE ESSENTIALS
           </p>
-          <h1 className="mt-5 font-serif text-6xl leading-[0.95] text-white sm:text-7xl lg:text-8xl">
+          <h1 className="mt-5 font-serif text-6xl leading-[0.95] text-white sm:text-7xl lg:text-7xl">
             Everything you might wish you packed.
           </h1>
           <p className="mt-7 max-w-xl text-base leading-8 text-white/64">
@@ -181,7 +168,7 @@ function DestinationEssentials() {
     <section className="px-5 py-16 sm:px-8 lg:py-20" id="japan-essentials">
       <div className="mx-auto max-w-7xl">
         <h2 className="font-serif text-5xl leading-tight text-white">
-          Essentials for Your Next Destination
+          Sample Destination Essentials
         </h2>
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {destinations.map((destination) => (
@@ -220,30 +207,6 @@ function DestinationEssentials() {
                 </Link>
               </div>
             </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Categories() {
-  return (
-    <section className="border-y border-white/10 bg-[#101010] px-5 py-14 sm:px-8">
-      <div className="mx-auto max-w-7xl">
-        <h2 className="font-serif text-4xl text-white">Essential Categories</h2>
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          {categories.map(({ filter, icon: Icon, name }) => (
-            <Link
-              className="group flex min-h-32 flex-col justify-between border border-white/10 bg-white/[0.035] p-4 text-left transition-colors hover:border-white/30 hover:bg-white/[0.07]"
-              href={`/shop?category=${encodeURIComponent(filter)}`}
-              key={name}
-            >
-              <Icon className="h-6 w-6 text-[#d8b7aa]" strokeWidth={1.5} />
-              <span className="text-sm font-semibold text-white/78 group-hover:text-white">
-                {name}
-              </span>
-            </Link>
           ))}
         </div>
       </div>
@@ -304,8 +267,14 @@ function BeforeYouFly({
 }
 
 function CuratedEssentials() {
+  const [activeFilter, setActiveFilter] = useState<ProductFilter>("All");
+  const filteredEssentials =
+    activeFilter === "All"
+      ? curatedEssentials
+      : curatedEssentials.filter((item) => item.category === activeFilter);
+
   return (
-    <section className="px-5 pb-16 sm:px-8 lg:pb-24" id="curated-essentials">
+    <section className="px-5 pb-16 pt-10 sm:px-8 lg:pb-24 lg:pt-14" id="curated-essentials">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -316,13 +285,25 @@ function CuratedEssentials() {
               Useful, compact, ready for the road.
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-7 text-white/60">
-            Save useful items to your essentials bag while you plan. Checkout
-            and payment are not connected for this MVP.
-          </p>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2">
+          {productFilters.map((filter) => (
+            <button
+              className={
+                activeFilter === filter
+                  ? "h-10 rounded-full bg-[#f8f4ea] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[#050505]"
+                  : "h-10 rounded-full border border-white/14 px-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/58 transition-colors hover:border-white/40 hover:text-white"
+              }
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              type="button"
+            >
+              {filter}
+            </button>
+          ))}
         </div>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {curatedEssentials.map((item) => (
+          {filteredEssentials.map((item) => (
             <article
               className="group overflow-hidden border border-white/10 bg-[#111]"
               key={item.slug}

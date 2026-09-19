@@ -107,7 +107,7 @@ export function ShopProductGrid({
                   {product.category}
                 </p>
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/50">
-                  {product.price}
+                  Estimated Price {product.price}
                 </p>
               </div>
               <h2 className="mt-3 font-serif text-3xl leading-tight text-white">
@@ -134,3 +134,4 @@ export function ShopProductGrid({
     </section>
   );
 }
+

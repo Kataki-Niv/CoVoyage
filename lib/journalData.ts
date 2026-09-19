@@ -1,23 +1,12 @@
-export type JournalPostType =
-  | "Video Journal"
-  | "Photo Journal"
-  | "Text Journal"
-  | "Travel Guide"
-  | "Travel Tip"
-  | "Community Story";
-
-export type JournalFilter = "Stories" | "Guides" | "Photos" | "Videos" | "Tips";
+export type JournalCategory = "Stories" | "Guides" | "Media" | "Tips";
 export type JournalFormat = "Text" | "Photo" | "Video";
-export type JournalContentCategory = "Story" | "Guide" | "Tip";
 
 export type JournalPost = {
   slug: string;
-  type: JournalPostType;
-  filter: JournalFilter;
+  category: JournalCategory;
   title: string;
   destination: string;
   format?: JournalFormat;
-  contentCategory?: JournalContentCategory;
   excerpt: string;
   author: string;
   readingTime: string;
@@ -37,21 +26,21 @@ export type JournalPost = {
 export const journalPosts: JournalPost[] = [
   {
     slug: "the-people-we-met-in-kyoto",
-    type: "Video Journal",
-    filter: "Videos",
+    category: "Media",
+    format: "Photo",
     title: "The People We Met in Kyoto",
     destination: "Japan / Kyoto",
     excerpt:
-      "A short video journal about temple mornings, side-street conversations, shared meals, and the strangers who made Kyoto feel personal.",
+      "A photo-led journal about temple mornings, side-street conversations, shared meals, and the strangers who made Kyoto feel personal.",
     author: "Maya Chen",
-    readingTime: "4 min watch",
+    readingTime: "4 min view",
     image:
       "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1800&q=88",
     imageAlt: "Traditional Kyoto temple framed by seasonal foliage",
     featured: true,
     body: [
       "Kyoto became less like a destination and more like a chain of small introductions: a baker before opening, a couple sketching in a garden, a guide who changed our route because the light was better elsewhere.",
-      "The video is not about collecting temples. It is about the people who softened the city and gave our days a human shape.",
+      "The journal is not about collecting temples. It is about the people who softened the city and gave our days a human shape.",
     ],
     sections: [
       {
@@ -65,65 +54,65 @@ export const journalPosts: JournalPost[] = [
     ],
   },
   {
-    slug: "a-quiet-morning-in-kyoto",
-    type: "Photo Journal",
-    filter: "Photos",
-    title: "A Quiet Morning in Kyoto",
-    destination: "Japan / Kyoto",
+    slug: "venice-before-the-day-trippers",
+    category: "Media",
+    format: "Photo",
+    title: "Venice Before the Day-Trippers",
+    destination: "Italy / Venice",
     excerpt:
-      "A photo-led walk through empty lanes, soft temple light, early bicycles, and the hush before the city fills.",
-    author: "Ren Sato",
+      "A photo-led walk through quiet canals, market setup, early vaporetto rides, and the hush before Venice fills.",
+    author: "Ren Moretti",
     readingTime: "3 min view",
     image:
-      "https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=1800&q=88",
-    imageAlt: "Quiet Kyoto morning street",
+      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=1800&q=88",
+    imageAlt: "Venice canal with gondolas and old buildings",
     body: [
-      "Kyoto rewards early alarms. Before the lanes fill and the cameras rise, there is a quieter city made of sweeping, incense, bicycle bells, and shopkeepers lifting shutters.",
-      "The trick is not to collect temples. It is to choose fewer places and leave room for the walk between them.",
+      "Venice rewards early alarms. Before the bridges fill and the cameras rise, there is a quieter city made of water deliveries, market crates, bells, and footsteps on stone.",
+      "The trick is not to collect every landmark. It is to choose fewer turns and leave room for the walk between them.",
     ],
     sections: [
       {
-        heading: "Before the Day Speeds Up",
+        heading: "Before the Water Traffic Builds",
         image:
-          "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1400&q=86",
-        imageAlt: "Kyoto temple in warm seasonal light",
+          "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&w=1400&q=86",
+        imageAlt: "Quiet Venice canal and historic buildings in soft light",
         content:
           "Arriving early is not only about avoiding crowds. It changes the way the city sounds.",
       },
     ],
   },
   {
-    slug: "sometimes-the-best-part-of-travelling-is-getting-lost",
-    type: "Text Journal",
-    filter: "Stories",
-    title: "Sometimes the best part of travelling is getting lost.",
-    destination: "Japan / Kyoto",
+    slug: "sometimes-the-best-part-of-paris-is-getting-lost",
+    category: "Stories",
+    format: "Text",
+    title: "Sometimes the best part of Paris is getting lost.",
+    destination: "France / Paris",
     excerpt:
-      "A short reflection from a traveler who found a hidden tea house by following a lantern-lit side street.",
-    author: "Ari Nair",
+      "A short reflection from a traveler who found a neighborhood bakery by following a rain-glossed side street.",
+    author: "Ari Laurent",
     readingTime: "2 min read",
     image:
-      "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=1800&q=80",
-    imageAlt: "Kyoto street at dusk with warm lantern light",
+      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1800&q=88",
+    imageAlt: "Paris skyline with the Eiffel Tower",
     body: [
       "We were not lost in any dramatic way. We had a phone, a map, and enough battery. But we had stopped trying to be efficient, which is its own kind of getting lost.",
-      "The tea house was down a side street we only noticed because we missed a turn.",
+      "The bakery was down a side street we only noticed because we missed a turn.",
     ],
     sections: [
       {
         heading: "A Better Wrong Turn",
         image:
-          "https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=1400&q=86",
-        imageAlt: "Quiet Kyoto street",
+          "https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?auto=format&fit=crop&w=1400&q=86",
+        imageAlt: "Paris street cafe and neighborhood tables",
         content:
-          "The memory stayed because it was not optimized: rain, lanterns, a handwritten menu, and nowhere else to be.",
+          "The memory stayed because it was not optimized: rain, a handwritten menu, warm bread, and nowhere else to be.",
       },
     ],
   },
   {
     slug: "eight-days-between-volcanoes-and-black-sand",
-    type: "Community Story",
-    filter: "Stories",
+    category: "Stories",
+    format: "Text",
     title: "Eight Days Between Volcanoes and Black Sand",
     destination: "Iceland",
     excerpt:
@@ -150,8 +139,8 @@ export const journalPosts: JournalPost[] = [
   },
   {
     slug: "finding-guatemala-beyond-the-tourist-trail",
-    type: "Travel Guide",
-    filter: "Guides",
+    category: "Guides",
+    format: "Text",
     title: "Finding Guatemala Beyond the Tourist Trail",
     destination: "Guatemala",
     excerpt:
@@ -177,8 +166,8 @@ export const journalPosts: JournalPost[] = [
   },
   {
     slug: "three-days-in-andalusia",
-    type: "Community Story",
-    filter: "Stories",
+    category: "Stories",
+    format: "Text",
     title: "Three Days in Andalusia",
     destination: "Spain",
     excerpt:
@@ -203,35 +192,35 @@ export const journalPosts: JournalPost[] = [
     ],
   },
   {
-    slug: "what-to-carry-for-japan",
-    type: "Travel Tip",
-    filter: "Tips",
-    title: "Packing Guide: What to Carry for Japan",
-    destination: "Japan",
+    slug: "what-to-carry-for-portugal",
+    category: "Tips",
+    format: "Text",
+    title: "Packing Guide: What to Carry for Portugal",
+    destination: "Portugal",
     excerpt:
-      "A practical packing note for temple days, convenience-store meals, humid weather, and rail-heavy routes.",
+      "A practical packing note for tiled streets, Atlantic wind, hill walks, beach trains, and long seafood evenings.",
     author: "CoVoyage Desk",
     readingTime: "4 min read",
     image:
-      "https://images.unsplash.com/photo-1512692723619-8b3e68365c9c?auto=format&fit=crop&w=1800&q=88",
-    imageAlt: "Travel bag and notebook on a bed",
-    body: ["Pack light, leave room, and prioritize shoes that can handle long station walks."],
+      "https://images.unsplash.com/photo-1513735492246-483525079686?auto=format&fit=crop&w=1800&q=88",
+    imageAlt: "Lisbon rooftops and colorful buildings in Portugal",
+    body: ["Pack light layers, comfortable shoes for stone hills, sun protection, and room for market finds."],
     sections: [],
   },
   {
-    slug: "best-time-to-visit-kyoto",
-    type: "Travel Tip",
-    filter: "Tips",
-    title: "Best Time to Visit Kyoto",
-    destination: "Japan / Kyoto",
+    slug: "best-time-to-visit-marrakech",
+    category: "Tips",
+    format: "Text",
+    title: "Best Time to Visit Marrakech",
+    destination: "Morocco / Marrakech",
     excerpt:
-      "A short seasonal note on spring blossoms, autumn color, summer heat, and quieter shoulder-season mornings.",
+      "A short seasonal note on medina pacing, garden breaks, warm evenings, and cooler shoulder-season mornings.",
     author: "CoVoyage Desk",
     readingTime: "3 min read",
     image:
-      "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1800&q=88",
-    imageAlt: "Kyoto shrine gates in soft light",
-    body: ["Kyoto changes sharply by season, so comfort depends as much on timing as route design."],
+      "https://images.unsplash.com/photo-1597212618440-806262de4f6b?auto=format&fit=crop&w=1800&q=88",
+    imageAlt: "Marrakech medina street and warm architecture",
+    body: ["Marrakech is easiest when days are paced around cooler mornings, shaded afternoons, and unhurried evenings."],
     sections: [],
   },
 ];

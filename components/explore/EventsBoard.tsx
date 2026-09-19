@@ -28,6 +28,7 @@ type RenderedEvent = DestinationEvent & {
   time?: string | null;
   organizerName?: string | null;
   participantCount: number;
+  source: "backend" | "curated";
   viewerHasJoined: boolean;
   viewerHasSaved: boolean;
 };
@@ -85,6 +86,7 @@ function mapApiEvent(
     imageAlt: event.media?.alt ?? fallback.imageAlt,
     organizerName: event.organizer_name,
     participantCount: event.participant_count ?? 0,
+    source: "backend",
     viewerHasJoined: event.viewer_has_joined ?? false,
     viewerHasSaved: event.viewer_has_saved ?? false,
   };
@@ -105,6 +107,7 @@ function mapStaticEvent(event: DestinationEvent): RenderedEvent {
     ...event,
     category: normalizeCategory(event.category),
     participantCount: 0,
+    source: "curated",
     viewerHasJoined: false,
     viewerHasSaved: false,
   };
@@ -157,10 +160,16 @@ export function EventsBoard({
       return staticEvents;
     }
 
-    return apiEvents.map((event, index) => {
+    const backendEvents = apiEvents.map((event, index) => {
       const fallback = events[index % Math.max(events.length, 1)] ?? fallbackImageEvent;
       return mapApiEvent(event, fallback);
     });
+    const backendKeys = new Set(backendEvents.map(eventKey));
+    const uniqueStaticEvents = staticEvents.filter(
+      (event) => !backendKeys.has(eventKey(event)),
+    );
+
+    return [...backendEvents, ...uniqueStaticEvents];
   }, [apiEvents, events]);
 
   const categories = useMemo(
@@ -322,6 +331,17 @@ export function EventsBoard({
         ) : null}
 
         <div className="mt-7 space-y-4">
+          {!filteredEvents.length ? (
+            <div
+              className={
+                isDarkEditorial
+                  ? "border border-white/10 bg-[#0E0E0F] px-4 py-5 text-sm leading-6 text-[#B8B0A4]"
+                  : "border border-[#9c7357] bg-[#fbf3e6] px-4 py-5 text-sm leading-6 text-[#6f5b53]"
+              }
+            >
+              No verified live or curated event listings are available for this destination yet.
+            </div>
+          ) : null}
           {filteredEvents.map((event, index) => (
             <EventCard
               event={event}
@@ -456,6 +476,17 @@ function EventCard({
         >
           {event.category}
         </span>
+        {event.source === "curated" ? (
+          <span
+            className={
+              isDarkEditorial
+                ? "mt-2 block text-[10px] font-medium uppercase tracking-[0.16em] text-[#9E9589]"
+                : "mt-2 block text-[10px] font-medium uppercase tracking-[0.16em] text-[#7b665e]"
+            }
+          >
+            Curated Listing
+          </span>
+        ) : null}
         <button
           className={
             isDarkEditorial
@@ -591,7 +622,9 @@ function EventDetailModal({
                     : "h-3.5 w-3.5 text-[#9b6b5f]"
                 }
               />
-              {event.participantCount} joined
+              {event.source === "backend"
+                ? `${event.participantCount} joined`
+                : "Curated listing"}
             </span>
             {event.organizerName ? <span>Organized by {event.organizerName}</span> : null}
           </div>
@@ -613,18 +646,32 @@ function EventDetailModal({
                   ? "inline-flex items-center gap-2 rounded-full border border-[#D8BE8A]/36 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#D8BE8A] transition-colors hover:bg-[#D8BE8A] hover:text-[#0B0B0C] disabled:cursor-not-allowed disabled:opacity-45"
                   : "inline-flex items-center gap-2 rounded-full border border-[#7d584e] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#5a3b2d] disabled:cursor-not-allowed disabled:opacity-45"
               }
-              disabled={isUpdatingParticipation}
+              disabled={isUpdatingParticipation || event.source === "curated"}
               onClick={onJoinToggle}
               type="button"
             >
               <Users className="h-3.5 w-3.5" />
-              {isUpdatingParticipation
-                ? "Updating"
-                : event.viewerHasJoined
-                  ? "Leave Event"
-                  : "Join Event"}
+              {event.source === "curated"
+                ? "Curated Listing"
+                : isUpdatingParticipation
+                  ? "Updating"
+                  : event.viewerHasJoined
+                    ? "Leave Event"
+                    : "Join Event"}
             </button>
           </div>
+
+          {event.source === "curated" ? (
+            <p
+              className={
+                isDarkEditorial
+                  ? "mt-4 text-sm text-[#B8B0A4]"
+                  : "mt-4 text-sm text-[#6f5b53]"
+              }
+            >
+              This is curated destination context; live joining is available only for verified community events.
+            </p>
+          ) : null}
 
           {actionMessage ? (
             <p

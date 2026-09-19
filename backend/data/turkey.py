@@ -122,7 +122,7 @@ def get_turkey_seed_dataset():
                 ["landscapes", "history", "photography", "walking", "wellness"],
                 ["Walking", "Photography", "Museums", "Wellness", "Viewpoints"],
                 TURKEY_SOURCE,
-                "https://images.unsplash.com/photo-1622225074638-1d80c0388694?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?auto=format&fit=crop&w=900&q=84",
             ),
         ],
         weather_summary=(

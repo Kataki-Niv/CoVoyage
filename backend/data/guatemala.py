@@ -106,7 +106,7 @@ GUATEMALA_COUNTRY = {
         "Budget Travel",
     ],
     "hero_media": {
-        "url": "https://images.unsplash.com/photo-1577736547133-2d92f088dcb7?auto=format&fit=crop&w=1800&q=85",
+        "url": "https://images.unsplash.com/photo-1602120012884-6aa678fa79c7?auto=format&fit=crop&w=1800&q=85",
         "alt_text": "Antigua Guatemala archway and cobblestone street",
         "credit": "Unsplash",
         "source": VISIT_GUATEMALA,
@@ -171,7 +171,7 @@ GUATEMALA_COUNTRY = {
         {
             "title": "Trying to cover too much too quickly",
             "body": (
-                "Distances can be slow by road. Antigua, Lake AtitlÃ¡n, and Tikal are better experienced "
+                "Distances can be slow by road. Antigua, Lake Atitlán, and Tikal are better experienced "
                 "with realistic transfer time rather than rushed same-day movement."
             ),
             "sources": [VISIT_GUATEMALA, ASISTUR],
@@ -208,7 +208,7 @@ GUATEMALA_COUNTRY = {
             "title": "Highland mornings and evenings feel different",
             "category": "climate-rhythm",
             "content": (
-                "Highland destinations such as Antigua and Lake AtitlÃ¡n can start cool, turn bright, and shift with "
+                "Highland destinations such as Antigua and Lake Atitlán can start cool, turn bright, and shift with "
                 "wet-season showers, so layers and rain protection make daily movement easier."
             ),
             "sources": [INSIVUMEH, VISIT_GUATEMALA],
@@ -226,7 +226,7 @@ GUATEMALA_COUNTRY = {
             "title": "Transfers need more time than maps suggest",
             "category": "transport",
             "content": (
-                "Road travel between Antigua, Lake AtitlÃ¡n, and northern sites can be slow. Reliable shuttles, flights, "
+                "Road travel between Antigua, Lake Atitlán, and northern sites can be slow. Reliable shuttles, flights, "
                 "or guided transfers help keep plans realistic."
             ),
             "sources": [VISIT_GUATEMALA, ASISTUR],
@@ -291,6 +291,20 @@ GUATEMALA_COUNTRY = {
             "usage_note": "Useful around shuttles, terminals, and local transport stops.",
             "sources": [ASISTUR, VISIT_GUATEMALA],
         },
+        {
+            "english": "Yes",
+            "local": "Sí",
+            "pronunciation": "see",
+            "usage_note": "Simple confirmation in shops, cafes, and transport settings.",
+            "sources": [VISIT_GUATEMALA],
+        },
+        {
+            "english": "No",
+            "local": "No",
+            "pronunciation": "noh",
+            "usage_note": "Useful for simple polite responses.",
+            "sources": [VISIT_GUATEMALA],
+        },
     ],
     "practical_notes": [
         {
@@ -334,11 +348,11 @@ GUATEMALA_PLACES = [
         "slug": "antigua-guatemala",
         "country_slug": "guatemala",
         "name": "Antigua Guatemala",
-        "region": "SacatepÃ©quez",
+        "region": "Sacatepéquez",
         "type": "Colonial city and cultural base",
         "story": (
             "Antigua Guatemala is a walkable colonial city framed by volcanoes, cobblestone streets, "
-            "ruins, courtyards, churches, cafÃ©s, and craft traditions."
+            "ruins, courtyards, churches, cafés, and craft traditions."
         ),
         "description": (
             "A historic city known for Spanish colonial architecture, volcano views, food, coffee, "
@@ -346,7 +360,7 @@ GUATEMALA_PLACES = [
         ),
         "media": [
             {
-                "url": "https://images.unsplash.com/photo-1577736547133-2d92f088dcb7?auto=format&fit=crop&w=900&q=84",
+                "url": "https://images.unsplash.com/photo-1602120012884-6aa678fa79c7?auto=format&fit=crop&w=900&q=84",
                 "alt_text": "Antigua Guatemala archway and cobblestone street",
                 "credit": "Unsplash",
                 "source": VISIT_GUATEMALA,
@@ -360,7 +374,7 @@ GUATEMALA_PLACES = [
         "tags": ["culture", "architecture", "food", "coffee", "volcanoes"],
         "activities": ["Walking", "Photography", "Local Food", "Coffee", "Markets"],
         "local_experience": (
-            "Slow mornings, courtyard cafÃ©s, market browsing, and sunset viewpoints make Antigua "
+            "Slow mornings, courtyard cafés, market browsing, and sunset viewpoints make Antigua "
             "feel more rewarding when not rushed."
         ),
         "access_notes": [
@@ -393,11 +407,11 @@ GUATEMALA_PLACES = [
     {
         "slug": "lake-atitlan",
         "country_slug": "guatemala",
-        "name": "Lake AtitlÃ¡n",
-        "region": "SololÃ¡",
+        "name": "Lake Atitlán",
+        "region": "Sololá",
         "type": "Volcanic lake and village region",
         "story": (
-            "Lake AtitlÃ¡n is a highland lake ringed by volcanoes and lakeside communities, each with "
+            "Lake Atitlán is a highland lake ringed by volcanoes and lakeside communities, each with "
             "its own rhythm, markets, crafts, views, and transport patterns."
         ),
         "description": (
@@ -454,7 +468,7 @@ GUATEMALA_PLACES = [
         "slug": "tikal",
         "country_slug": "guatemala",
         "name": "Tikal",
-        "region": "PetÃ©n",
+        "region": "Petén",
         "type": "Archaeological park and rainforest site",
         "story": (
             "Tikal brings monumental Maya architecture into rainforest soundscapes, with temples, "

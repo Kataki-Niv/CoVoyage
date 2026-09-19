@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type TransitionEvent, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
@@ -25,7 +25,6 @@ export function TravelEssentialsSection() {
   const [itemStep, setItemStep] = useState(304);
   const [isPaused, setIsPaused] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
-  const manualTimerRef = useRef<number | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -43,22 +42,24 @@ export function TravelEssentialsSection() {
   }, []);
 
   const move = useCallback((direction: number) => {
+    if (isMoving) return;
+
     setIsMoving(true);
     setActiveIndex((current) => current + direction);
+  }, [isMoving]);
 
-    if (manualTimerRef.current) {
-      window.clearTimeout(manualTimerRef.current);
+  const handleTrackTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== "transform") {
+      return;
     }
 
-    manualTimerRef.current = window.setTimeout(() => {
-      setIsMoving(false);
-      setActiveIndex((current) => {
-        if (current >= loopEndIndex) return loopStartIndex;
-        if (current < loopStartIndex) return loopEndIndex - 1;
-        return current;
-      });
-    }, 720);
-  }, []);
+    setIsMoving(false);
+    setActiveIndex((current) => {
+      if (current >= loopEndIndex) return loopStartIndex;
+      if (current < loopStartIndex) return loopEndIndex - 1;
+      return current;
+    });
+  };
 
   useEffect(() => {
     if (isPaused) return;
@@ -69,14 +70,6 @@ export function TravelEssentialsSection() {
 
     return () => window.clearInterval(timer);
   }, [isPaused, move]);
-
-  useEffect(() => {
-    return () => {
-      if (manualTimerRef.current) {
-        window.clearTimeout(manualTimerRef.current);
-      }
-    };
-  }, []);
 
   return (
     <section className="scroll-mt-28 overflow-hidden bg-[#050505] px-8 pb-24 pt-8 text-[#f8f4ea] sm:px-12 lg:px-16 lg:pb-32" id="covoyage-essentials">
@@ -101,7 +94,7 @@ export function TravelEssentialsSection() {
             <ChevronRight className="h-5 w-5" strokeWidth={1.6} />
           </button>
 
-          <div ref={trackRef} className={`flex gap-5 will-change-transform sm:gap-6 ${isMoving ? "transition-transform duration-700 ease-out" : ""}`} style={{ transform: `translate3d(-${activeIndex * itemStep}px, 0, 0)` }}>
+          <div ref={trackRef} className={`flex gap-5 will-change-transform sm:gap-6 ${isMoving ? "transition-transform duration-700 ease-out" : ""}`} style={{ transform: `translate3d(-${activeIndex * itemStep}px, 0, 0)` }} onTransitionEnd={handleTrackTransitionEnd}>
             {carouselItems.map((item, index) => (
               <article className="group/card relative h-[22rem] w-[14rem] shrink-0 overflow-hidden border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/25 transition-transform duration-500 hover:scale-[1.05] hover:border-white/28 sm:h-[26rem] sm:w-[16rem] lg:h-[29rem] lg:w-[17rem]" data-essential-card key={`${item.name}-${index}`}>
                 <Image alt={item.name} className="object-cover grayscale-[14%] transition duration-700 group-hover/card:scale-105" fill sizes="(min-width: 1024px) 272px, (min-width: 640px) 256px, 224px" src={item.image} />

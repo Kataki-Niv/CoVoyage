@@ -10,17 +10,22 @@ from services.account_identity import EMAIL_COLLATION
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-MONGODB_URI = os.getenv("MONGODB_URI", "").strip()
-DATABASE_NAME = os.getenv("DATABASE_NAME", "").strip()
-
-if not MONGODB_URI:
-    raise ValueError("MONGODB_URI is not set in the environment")
-
-if not DATABASE_NAME:
-    raise ValueError("DATABASE_NAME is not set in the environment")
-
 client = None
 database = None
+
+
+def get_database_config():
+    mongodb_uri = os.getenv("MONGODB_URI", "").strip()
+    database_name = os.getenv("DATABASE_NAME", "").strip()
+    tls_ca_file = os.getenv("MONGODB_TLS_CA_FILE", "").strip() or certifi.where()
+
+    if not mongodb_uri:
+        raise RuntimeError("MONGODB_URI is not set in the environment")
+
+    if not database_name:
+        raise RuntimeError("DATABASE_NAME is not set in the environment")
+
+    return mongodb_uri, database_name, tls_ca_file
 
 
 def connect_to_mongodb():
@@ -29,12 +34,13 @@ def connect_to_mongodb():
     if client is not None and database is not None:
         return database
 
+    mongodb_uri, database_name, tls_ca_file = get_database_config()
     client = MongoClient(
-        MONGODB_URI,
+        mongodb_uri,
         serverSelectionTimeoutMS=5000,
-        tlsCAFile=certifi.where(),
+        tlsCAFile=tls_ca_file,
     )
-    database = client[DATABASE_NAME]
+    database = client[database_name]
     test_mongodb_connection()
     return database
 

@@ -2,6 +2,7 @@ from pathlib import Path
 import sys
 
 from bson import ObjectId
+from datetime import datetime
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -10,7 +11,11 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from auth import hash_password
-from database import get_profiles_collection, get_users_collection
+from database import (
+    get_group_voyages_collection,
+    get_profiles_collection,
+    get_users_collection,
+)
 
 
 TEST_PASSWORD = "CoVoyageTest123!"
@@ -475,6 +480,143 @@ TEST_TRAVELERS = [
     },
 ]
 
+TEST_GROUP_VOYAGES = [
+    {
+        "seed_key": "tokyo-winter-food-photo",
+        "title": "Tokyo Food Alleys & Photo Walks",
+        "destination": "Tokyo",
+        "creator_username": "omar.citynights",
+        "participant_usernames": ["yuki.nomad.cafes", "nora.templedays"],
+        "start_date": "2026-11-06",
+        "end_date": "2026-11-10",
+        "description": (
+            "A compact city break for street food, night neighborhoods, cafe "
+            "stops, and easy photo walks by train."
+        ),
+        "tags": ["Street Food", "Photography", "City Break"],
+        "budget_range": "Mid-range",
+        "max_participants": 6,
+    },
+    {
+        "seed_key": "bali-slow-workation",
+        "title": "Bali Slow Workation Circle",
+        "destination": "Bali",
+        "creator_username": "maya.bali.frames",
+        "participant_usernames": ["arjun.nomad", "elena.seasides"],
+        "start_date": "2026-11-18",
+        "end_date": "2026-11-27",
+        "description": (
+            "A relaxed shared base for sunrise walks, coworking-friendly days, "
+            "local food, beaches, and low-pressure exploring."
+        ),
+        "tags": ["Slow Travel", "Workations", "Beaches"],
+        "budget_range": "Budget-friendly",
+        "max_participants": 8,
+    },
+    {
+        "seed_key": "lisbon-market-museum",
+        "title": "Lisbon Markets, Museums & Late Dinners",
+        "destination": "Lisbon",
+        "creator_username": "sofia.lisbon.lanes",
+        "participant_usernames": ["mateo.tables"],
+        "start_date": "2026-10-08",
+        "end_date": "2026-10-17",
+        "description": (
+            "A cultural city route built around markets, tiled streets, museums, "
+            "architecture, and unhurried dinners."
+        ),
+        "tags": ["Museums", "Architecture", "Local Food"],
+        "budget_range": "Mid-range",
+        "max_participants": 5,
+    },
+    {
+        "seed_key": "ladakh-mountain-light",
+        "title": "Ladakh Mountain Roads & Stargazing",
+        "destination": "Ladakh",
+        "creator_username": "priya.trails",
+        "participant_usernames": ["daniel.highpasses", "amina.desertlight"],
+        "start_date": "2026-10-18",
+        "end_date": "2026-10-30",
+        "description": (
+            "A small adventure group for mountain roads, simple stays, careful "
+            "acclimatization, landscape photography, and clear-night stargazing."
+        ),
+        "tags": ["Mountains", "Road Trips", "Stargazing"],
+        "budget_range": "Budget-friendly",
+        "max_participants": 6,
+    },
+]
+
+
+def slugify_seed_value(value: str) -> str:
+    return (
+        value.lower()
+        .replace("&", "and")
+        .replace(" ", "-")
+        .replace(",", "")
+        .replace(".", "")
+    )
+
+
+def build_generated_group_voyages() -> list[dict]:
+    generated_voyages = []
+    destinations = []
+    seen_destinations = set()
+
+    for traveler in TEST_TRAVELERS:
+        for destination in traveler["preferred_destinations"]:
+            normalized_destination = destination.strip().lower()
+
+            if normalized_destination in seen_destinations:
+                continue
+
+            seen_destinations.add(normalized_destination)
+            destinations.append((destination, traveler))
+
+    for generated_index, (destination, traveler) in enumerate(destinations, start=1):
+        host_candidates = [
+            candidate
+            for candidate in TEST_TRAVELERS
+            if destination not in candidate["preferred_destinations"]
+            and candidate["username"] != traveler["username"]
+        ]
+
+        host_traveler = (
+            host_candidates[generated_index % len(host_candidates)]
+            if host_candidates
+            else traveler
+        )
+        participant_travelers = [
+            candidate
+            for candidate in host_candidates
+            if candidate["username"] != host_traveler["username"]
+        ][:2]
+
+        generated_voyages.append(
+            {
+                "seed_key": f"generated-{slugify_seed_value(destination)}-discover",
+                "title": f"{destination} Shared Discovery Circle",
+                "destination": destination,
+                "creator_username": host_traveler["username"],
+                "participant_usernames": [
+                    candidate["username"]
+                    for candidate in participant_travelers
+                ],
+                "start_date": f"2026-12-{min(24, 2 + generated_index):02d}",
+                "end_date": f"2026-12-{min(28, 6 + generated_index):02d}",
+                "description": (
+                    f"A small hosted group for travelers with {destination} "
+                    "on their saved profile, built around easy planning, "
+                    "shared local experiences, and compatible travel rhythms."
+                ),
+                "tags": ["Shared Plans", "Local Food", "Culture"],
+                "budget_range": traveler["budget_range"],
+                "max_participants": 6,
+            }
+        )
+
+    return generated_voyages
+
 
 def build_profile_document(user_id: str, traveler: dict) -> dict:
     return {
@@ -521,9 +663,11 @@ def find_existing_seed_user(users, profiles, traveler: dict):
 def seed_test_profiles():
     users = get_users_collection()
     profiles = get_profiles_collection()
+    group_voyages = get_group_voyages_collection()
     password_hash = hash_password(TEST_PASSWORD)
     created_users = 0
     upserted_profiles = 0
+    upserted_group_voyages = 0
 
     for traveler in TEST_TRAVELERS:
         existing_user = find_existing_seed_user(users, profiles, traveler)
@@ -561,8 +705,71 @@ def seed_test_profiles():
         )
         upserted_profiles += 1
 
+    profiles_by_username = {
+        profile["username"]: profile
+        for profile in profiles.find(
+            {"username": {"$in": [traveler["username"] for traveler in TEST_TRAVELERS]}}
+        )
+    }
+    now = datetime.utcnow()
+
+    seed_group_voyages = TEST_GROUP_VOYAGES + build_generated_group_voyages()
+    seed_group_voyage_keys = [
+        voyage["seed_key"]
+        for voyage in seed_group_voyages
+    ]
+
+    group_voyages.delete_many(
+        {
+            "is_test_seed": True,
+            "seed_key": {"$nin": seed_group_voyage_keys},
+        }
+    )
+
+    for voyage in seed_group_voyages:
+        creator_profile = profiles_by_username.get(voyage["creator_username"])
+
+        if not creator_profile:
+            continue
+
+        participant_ids = [creator_profile["user_id"]]
+
+        for username in voyage["participant_usernames"]:
+            participant_profile = profiles_by_username.get(username)
+
+            if participant_profile:
+                participant_ids.append(participant_profile["user_id"])
+
+        voyage_document = {
+            "seed_key": voyage["seed_key"],
+            "title": voyage["title"],
+            "destination": voyage["destination"],
+            "creator_id": creator_profile["user_id"],
+            "participant_ids": list(dict.fromkeys(participant_ids)),
+            "start_date": voyage["start_date"],
+            "end_date": voyage["end_date"],
+            "description": voyage["description"],
+            "tags": voyage["tags"],
+            "budget_range": voyage["budget_range"],
+            "max_participants": voyage["max_participants"],
+            "status": "open",
+            "visibility": "public",
+            "is_test_seed": True,
+            "updated_at": now,
+        }
+        group_voyages.update_one(
+            {"seed_key": voyage["seed_key"]},
+            {
+                "$set": voyage_document,
+                "$setOnInsert": {"created_at": now},
+            },
+            upsert=True,
+        )
+        upserted_group_voyages += 1
+
     print(f"Created {created_users} new users")
     print(f"Upserted {upserted_profiles} travel profiles")
+    print(f"Upserted {upserted_group_voyages} group voyages")
     print("Seeding complete")
 
 

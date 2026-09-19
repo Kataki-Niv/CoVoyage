@@ -66,7 +66,7 @@ export default async function JournalArticlePage({
               <div className="mt-8 grid gap-9 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] lg:items-end">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.34em] text-stone-500">
-                    {post.type}
+                    {post.category}
                   </p>
                   <h1 className="mt-4 font-serif text-5xl leading-tight text-stone-950 sm:text-6xl">
                     {post.title}
@@ -169,7 +169,7 @@ export default async function JournalArticlePage({
                   key={morePost.slug}
                 >
                   <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-stone-500">
-                    {morePost.type}
+                    {morePost.category}
                   </p>
                   <h3 className="mt-3 font-serif text-2xl leading-tight text-stone-950 group-hover:text-stone-700">
                     {morePost.title}

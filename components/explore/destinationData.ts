@@ -173,8 +173,8 @@ export const destinations: Record<StaticDestinationKey, DestinationData> = {
         story:
           "A dramatic valley framed by glaciers and mountains, where summer hiking turns Iceland's scale into something you can feel on foot.",
         image:
-          "https://i.pinimg.com/1200x/8b/23/11/8b2311edf1ff0293d24082602777a7eb.jpg",
-        imageAlt: "Mount Fuji reflected in a lake at sunset",
+          "https://images.unsplash.com/photo-1504893524553-b855bce32c67?auto=format&fit=crop&w=1400&q=86",
+        imageAlt: "Icelandic valley and mountain landscape in soft northern light",
         align: "right",
         facts: [
           { label: "Why Visit", value: "Valleys, glaciers, and trail views" },
@@ -362,6 +362,9 @@ export const destinations: Record<StaticDestinationKey, DestinationData> = {
       { english: "Yes", local: "J\u00e1" },
       { english: "No", local: "Nei" },
       { english: "Excuse me / Sorry", local: "Afsaki\u00f0" },
+      { english: "Where is...?", local: "Hvar er...?", pronunciation: "kvar er" },
+      { english: "How much does it cost?", local: "Hva\u00f0 kostar \u00feetta?", pronunciation: "kvath KOS-tar thet-ta" },
+      { english: "I do not understand", local: "\u00c9g skil ekki", pronunciation: "yeg skil EH-kee" },
     ],
   },
   guatemala: {
@@ -587,6 +590,8 @@ export const destinations: Record<StaticDestinationKey, DestinationData> = {
       { english: "Yes", local: "S\u00ed" },
       { english: "No", local: "No" },
       { english: "Excuse me / Sorry", local: "Disculpe / Lo siento" },
+      { english: "Where is...?", local: "\u00bfD\u00f3nde est\u00e1...?" },
+      { english: "How much does it cost?", local: "\u00bfCu\u00e1nto cuesta?" },
     ],
   },
   spain: {
@@ -812,6 +817,8 @@ export const destinations: Record<StaticDestinationKey, DestinationData> = {
       { english: "Yes", local: "S\u00ed" },
       { english: "No", local: "No" },
       { english: "Excuse me / Sorry", local: "Perd\u00f3n / Lo siento" },
+      { english: "Where is...?", local: "\u00bfD\u00f3nde est\u00e1...?" },
+      { english: "How much does it cost?", local: "\u00bfCu\u00e1nto cuesta?" },
     ],
   },
   japan: {
@@ -1101,6 +1108,21 @@ export const destinations: Record<StaticDestinationKey, DestinationData> = {
         english: "Goodbye",
         local: "\u3055\u3088\u3046\u306a\u3089",
         pronunciation: "Say\u014dnara",
+      },
+      {
+        english: "Please",
+        local: "\u304a\u9858\u3044\u3057\u307e\u3059",
+        pronunciation: "Onegaishimasu",
+      },
+      {
+        english: "Where is...?",
+        local: "\u2026\u306f\u3069\u3053\u3067\u3059\u304b",
+        pronunciation: "... wa doko desu ka?",
+      },
+      {
+        english: "How much is it?",
+        local: "\u3044\u304f\u3089\u3067\u3059\u304b",
+        pronunciation: "Ikura desu ka?",
       },
     ],
   },

@@ -5,20 +5,19 @@ import {
   Bookmark,
   BookOpen,
   Camera,
-  Film,
   Heart,
   Lightbulb,
   PenLine,
   Share2,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, resolveMediaUrl } from "@/lib/api";
 import {
   journalPosts,
-  type JournalContentCategory,
+  type JournalCategory,
   type JournalFormat,
   type JournalPost,
 } from "@/lib/journalData";
@@ -29,7 +28,7 @@ type BlogResponse = {
   content?: string;
   excerpt?: string | null;
   tags?: string[];
-  category?: "stories" | "guides" | "photos" | "videos" | "tips" | null;
+  category?: "stories" | "guides" | "media" | "photos" | "videos" | "tips" | null;
   format?: "text" | "photo" | "video" | null;
   destination_name?: string | null;
   cover_image_url?: string | null;
@@ -40,16 +39,16 @@ type BlogResponse = {
 };
 
 const typeIcons = {
-  "Video Journal": Film,
-  "Photo Journal": Camera,
-  "Text Journal": PenLine,
-  "Travel Guide": BookOpen,
-  "Travel Tip": Lightbulb,
-  "Community Story": PenLine,
+  Stories: PenLine,
+  Guides: BookOpen,
+  Media: Camera,
+  Tips: Lightbulb,
 };
 
 const fallbackJournalImage =
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=86";
+const reelFilters = ["All", "Stories", "Guides", "Media", "Tips"] as const;
+type ReelFilter = (typeof reelFilters)[number];
 
 function textExcerpt(content: string, limit = 180) {
   const normalizedContent = content.replace(/\s+/g, " ").trim();
@@ -68,19 +67,20 @@ function estimateReadingTime(content: string) {
   return `${Math.max(1, Math.ceil(words / 220))} min read`;
 }
 
-function getBlogCategory(category: BlogResponse["category"]): {
-  filter: "Stories" | "Guides" | "Tips";
-  contentCategory: JournalContentCategory;
-} {
+function getBlogCategory(category: BlogResponse["category"]): JournalCategory {
+  if (category === "media" || category === "photos" || category === "videos") {
+    return "Media";
+  }
+
   if (category === "guides") {
-    return { filter: "Guides", contentCategory: "Guide" };
+    return "Guides";
   }
 
   if (category === "tips") {
-    return { filter: "Tips", contentCategory: "Tip" };
+    return "Tips";
   }
 
-  return { filter: "Stories", contentCategory: "Story" };
+  return "Stories";
 }
 
 function getBlogFormat(blog: BlogResponse): JournalFormat {
@@ -95,47 +95,26 @@ function getBlogFormat(blog: BlogResponse): JournalFormat {
   return "Text";
 }
 
-function getTypeForFormat(format: JournalFormat, category: JournalContentCategory) {
-  if (format === "Photo") {
-    return "Photo Journal" as const;
-  }
-
-  if (format === "Video") {
-    return "Video Journal" as const;
-  }
-
-  if (category === "Guide") {
-    return "Travel Guide" as const;
-  }
-
-  if (category === "Tip") {
-    return "Travel Tip" as const;
-  }
-
-  return "Text Journal" as const;
-}
-
 function mapBlogToJournalPost(blog: BlogResponse, index: number): JournalPost {
   const title = blog.title?.trim() || "Untitled Journal";
   const content = blog.content?.trim() || "";
-  const { filter, contentCategory } = getBlogCategory(blog.category);
+  const category = getBlogCategory(blog.category);
   const format = getBlogFormat(blog);
-  const image = blog.cover_image_url || fallbackJournalImage;
+  const image = resolveMediaUrl(blog.cover_image_url) || fallbackJournalImage;
+  const mediaUrl = resolveMediaUrl(blog.media_url);
 
   return {
     slug: blog.slug?.trim() || blog.id || `journal-${index + 1}`,
-    type: getTypeForFormat(format, contentCategory),
-    filter,
+    category,
     title,
     destination: blog.destination_name?.trim() || "CoVoyage Journal",
     format,
-    contentCategory,
     excerpt: blog.excerpt?.trim() || textExcerpt(content),
     author: blog.author_name?.trim() || "CoVoyage Traveler",
     readingTime: estimateReadingTime(content || title),
     image,
     imageAlt: `${title} journal cover`,
-    mediaUrl: blog.media_url || (format === "Video" ? image : undefined),
+    mediaUrl: mediaUrl || undefined,
     body: content ? [content] : [textExcerpt(title)],
     sections: [],
   };
@@ -170,33 +149,9 @@ function orderPostsForEntry(posts: JournalPost[], initialJournal: string) {
   ];
 }
 
-function getContentCategory(post: JournalPost) {
-  if (post.contentCategory) {
-    return post.contentCategory;
-  }
-
-  if (post.filter === "Guides") {
-    return "Guide";
-  }
-
-  if (post.filter === "Tips") {
-    return "Tip";
-  }
-
-  return "Story";
-}
-
 function getFormat(post: JournalPost) {
   if (post.format) {
     return post.format;
-  }
-
-  if (post.filter === "Videos") {
-    return "Video";
-  }
-
-  if (post.filter === "Photos") {
-    return "Photo";
   }
 
   return "Text";
@@ -206,13 +161,28 @@ function getPostBody(post: JournalPost) {
   return post.body.join("\n\n");
 }
 
+function getEmptyFilterLabel(activeFilter: ReelFilter) {
+  return activeFilter === "All" ? "" : `${activeFilter.toLowerCase()} `;
+}
+
+function getFilteredPosts(posts: JournalPost[], activeFilter: ReelFilter) {
+  if (activeFilter === "All") {
+    return posts;
+  }
+
+  return posts.filter((post) => post.category === activeFilter);
+}
+
 export function JournalExploreClient({
   initialJournal,
 }: {
   initialJournal: string;
 }) {
+  const router = useRouter();
   const [actionMessage, setActionMessage] = useState("");
+  const [activeFilter, setActiveFilter] = useState<ReelFilter>("All");
   const [posts, setPosts] = useState<JournalPost[]>(journalPosts);
+  const reelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -236,9 +206,13 @@ export function JournalExploreClient({
   }, []);
 
   const orderedPosts = useMemo(
-    () => orderPostsForEntry(posts, initialJournal),
-    [initialJournal, posts],
+    () => orderPostsForEntry(getFilteredPosts(posts, activeFilter), initialJournal),
+    [activeFilter, initialJournal, posts],
   );
+
+  useEffect(() => {
+    reelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeFilter]);
 
   const sharePost = async (post: JournalPost) => {
     const url = `${window.location.origin}/journal/explore?journal=${post.slug}`;
@@ -262,35 +236,30 @@ export function JournalExploreClient({
   return (
     <main className="bg-[#050505] text-[#f8f4ea]">
       <div className="border-b border-white/10 bg-[#050505] px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-4">
-            <Link
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-white/18 px-4 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-white/45"
-              href="/journal"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Journals
-            </Link>
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-white/50">
-              Explore
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex h-10 items-center justify-center rounded-full bg-[#f8f4ea] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#050505]">
-                Explore
-              </span>
-              <Link
-                className="inline-flex h-10 items-center justify-center rounded-full border border-white/18 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:border-white/45"
-                href="/journal/create"
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">
+          <button
+            aria-label="Go back"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/18 text-white transition-colors hover:border-white/45"
+            onClick={() => router.back()}
+            type="button"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex flex-wrap gap-2 overflow-x-auto">
+            {reelFilters.map((filter) => (
+              <button
+                className={
+                  activeFilter === filter
+                    ? "h-10 shrink-0 rounded-full bg-[#f8f4ea] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[#050505]"
+                    : "h-10 shrink-0 rounded-full border border-white/14 px-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/58 transition-colors hover:border-white/40 hover:text-white"
+                }
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                type="button"
               >
-                Create
-              </Link>
-              <Link
-                className="inline-flex h-10 items-center justify-center rounded-full border border-white/18 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:border-white/45"
-                href="/journal/my-journals"
-              >
-                My Journals
-              </Link>
-            </div>
+                {filter.toUpperCase()}
+              </button>
+            ))}
           </div>
         </div>
         {actionMessage ? (
@@ -300,7 +269,10 @@ export function JournalExploreClient({
         ) : null}
       </div>
 
-      <section className="h-[calc(100vh-9rem)] snap-y snap-mandatory overflow-y-auto scroll-smooth bg-[#050505]">
+      <section
+        className="h-[calc(100vh-12rem)] min-h-[520px] snap-y snap-mandatory overflow-y-auto scroll-smooth bg-[#050505]"
+        ref={reelRef}
+      >
         {orderedPosts.length ? (
           orderedPosts.map((post) => (
             <JournalReelPost
@@ -319,7 +291,7 @@ export function JournalExploreClient({
                 No Journals
               </p>
               <p className="mt-4 font-serif text-4xl text-white">
-                No journals are available yet.
+                No {getEmptyFilterLabel(activeFilter)}journals are available yet.
               </p>
             </div>
           </div>
@@ -338,13 +310,13 @@ function JournalReelPost({
   onUnavailableAction: (label: string) => void;
   onShare: (post: JournalPost) => void;
 }) {
-  const Icon = typeIcons[post.type];
+  const Icon = typeIcons[post.category];
   const format = getFormat(post);
-  const category = getContentCategory(post);
+  const category = post.category;
   const actions = (
-    <div className="mt-8 flex flex-wrap gap-3">
+    <div className="mt-5 flex flex-wrap gap-2">
       <button
-        className="inline-flex h-11 items-center gap-2 rounded-full border border-white/18 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/58"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-white/18 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/58"
         onClick={() => onUnavailableAction("Like")}
         type="button"
       >
@@ -352,7 +324,7 @@ function JournalReelPost({
         Like
       </button>
       <button
-        className="inline-flex h-11 items-center gap-2 rounded-full border border-white/18 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/58"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-white/18 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/58"
         onClick={() => onUnavailableAction("Save")}
         type="button"
       >
@@ -360,7 +332,7 @@ function JournalReelPost({
         Save
       </button>
       <button
-        className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f8f4ea] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#050505]"
+        className="inline-flex h-9 items-center gap-2 rounded-full bg-[#f8f4ea] px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#050505]"
         onClick={() => onShare(post)}
         type="button"
       >
@@ -372,37 +344,34 @@ function JournalReelPost({
 
   if (format === "Text") {
     return (
-      <article className="relative flex min-h-full snap-start items-center overflow-hidden border-b border-white/10 bg-[#050505] px-5 py-10 sm:px-8 lg:py-14">
+      <article className="relative flex min-h-full snap-start items-start overflow-hidden border-b border-white/10 bg-[#050505] px-5 pb-6 pt-4 sm:px-8 lg:pb-7 lg:pt-5">
         <div className="absolute inset-x-0 top-0 h-px bg-white/12" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(248,244,234,0.08),transparent_28%),linear-gradient(135deg,rgba(248,244,234,0.03),transparent_45%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl gap-8 lg:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)] lg:items-center">
+        <div className="relative mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,0.34fr)_minmax(0,0.66fr)] lg:items-start">
           <div>
             <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
               <span className="inline-flex items-center gap-2 border border-white/14 bg-white/[0.035] px-3 py-2">
                 <Icon className="h-4 w-4" strokeWidth={1.5} />
-                {format}
-              </span>
-              <span className="border border-white/14 bg-white/[0.035] px-3 py-2">
                 {category}
               </span>
             </div>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-white/46">
+            <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.26em] text-white/46">
               {post.destination}
             </p>
-            <h1 className="mt-4 font-serif text-5xl leading-tight text-[#f8f4ea] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-3 font-serif text-3xl leading-tight text-[#f8f4ea] sm:text-4xl lg:text-5xl">
               {post.title}
             </h1>
-            <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs uppercase tracking-[0.18em] text-white/46">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.18em] text-white/46">
               <span>{post.author}</span>
               <span>{post.readingTime}</span>
             </div>
             {actions}
           </div>
-          <div className="border-l border-white/14 pl-5 sm:pl-8 lg:pl-10">
-            <p className="font-serif text-3xl leading-tight text-white sm:text-4xl">
+          <div className="border-l border-white/14 pl-5 sm:pl-7 lg:pl-8">
+            <p className="font-serif text-2xl leading-tight text-white sm:text-3xl">
               {post.excerpt}
             </p>
-            <div className="mt-8 max-h-[42vh] overflow-hidden text-base leading-8 text-white/68">
+            <div className="mt-5 max-h-[24vh] overflow-y-auto pr-2 text-sm leading-7 text-white/68">
               {getPostBody(post)}
             </div>
           </div>
@@ -412,9 +381,9 @@ function JournalReelPost({
   }
 
   return (
-    <article className="relative grid min-h-full snap-start overflow-hidden border-b border-white/10 bg-[#050505] px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)] lg:items-center lg:gap-10 lg:py-10">
-      <div className="relative min-h-[52vh] overflow-hidden border border-white/10 bg-[#111] lg:min-h-[76vh]">
-        {format === "Video" ? (
+    <article className="relative grid min-h-full snap-start overflow-hidden border-b border-white/10 bg-[#050505] px-5 pb-6 pt-4 sm:px-8 lg:grid-cols-[minmax(0,0.52fr)_minmax(300px,0.48fr)] lg:items-start lg:gap-8 lg:pb-7 lg:pt-5">
+      <div className="relative min-h-[36vh] overflow-hidden border border-white/10 bg-[#111] lg:min-h-[54vh]">
+        {format === "Video" && post.mediaUrl ? (
           <video
             aria-label={`${post.title} video journal`}
             className="absolute inset-0 h-full w-full object-cover"
@@ -423,7 +392,7 @@ function JournalReelPost({
             playsInline
             preload="metadata"
             poster={post.image}
-            src={post.mediaUrl || "/videos/petra-journal.mp4"}
+            src={post.mediaUrl}
           />
         ) : (
           <Image
@@ -438,26 +407,24 @@ function JournalReelPost({
         <div className="absolute left-5 top-5 flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
           <span className="inline-flex items-center gap-2 bg-black/42 px-3 py-2 backdrop-blur-xl">
             <Icon className="h-4 w-4" strokeWidth={1.5} />
-            {format}
+            {category}
           </span>
-          <span className="bg-black/42 px-3 py-2 backdrop-blur-xl">{category}</span>
         </div>
       </div>
 
-      <div className="relative z-10 flex min-h-[38vh] flex-col justify-center py-8 lg:min-h-0 lg:py-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/46">
+      <div className="relative z-10 flex min-h-[38vh] flex-col justify-start py-5 lg:min-h-0 lg:py-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/46">
           {post.destination}
         </p>
-        <h1 className="mt-4 font-serif text-5xl leading-tight text-[#f8f4ea] sm:text-6xl">
+        <h1 className="mt-3 font-serif text-3xl leading-tight text-[#f8f4ea] sm:text-4xl lg:text-5xl">
           {post.title}
         </h1>
-        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs uppercase tracking-[0.18em] text-white/46">
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.18em] text-white/46">
           <span>{post.author}</span>
           <span>{category}</span>
-          <span>{format}</span>
           <span>{post.readingTime}</span>
         </div>
-        <p className="mt-6 text-base leading-8 text-white/68">{post.excerpt}</p>
+        <p className="mt-4 text-sm leading-7 text-white/68">{post.excerpt}</p>
         {actions}
       </div>
     </article>

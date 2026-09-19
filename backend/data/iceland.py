@@ -315,6 +315,27 @@ ICELAND_COUNTRY = {
             "usage_note": "A polite daytime greeting.",
             "sources": [VISIT_ICELAND],
         },
+        {
+            "english": "Where is...?",
+            "local": "Hvar er...?",
+            "pronunciation": "kvar er",
+            "usage_note": "Useful when asking simple directions.",
+            "sources": [VISIT_ICELAND],
+        },
+        {
+            "english": "How much does it cost?",
+            "local": "Hvað kostar þetta?",
+            "pronunciation": "kvath KOS-tar thet-ta",
+            "usage_note": "Helpful in shops, cafes, and tour offices.",
+            "sources": [VISIT_ICELAND],
+        },
+        {
+            "english": "I do not understand",
+            "local": "Ég skil ekki",
+            "pronunciation": "yeg skil EH-kee",
+            "usage_note": "A polite phrase when switching to English is needed.",
+            "sources": [VISIT_ICELAND],
+        },
     ],
     "practical_notes": [
         {
@@ -444,11 +465,11 @@ ICELAND_PLACES = [
     {
         "slug": "thorsmork",
         "country_slug": "iceland",
-        "name": "ÃžÃ³rsmÃ¶rk",
+        "name": "Þórsmörk",
         "region": "South Highlands",
         "type": "Mountain valley and hiking area",
         "story": (
-            "ÃžÃ³rsmÃ¶rk is a sheltered highland valley framed by glaciers, braided rivers, birch "
+            "Þórsmörk is a sheltered highland valley framed by glaciers, braided rivers, birch "
             "woodland, and volcanic ridges."
         ),
         "description": (
@@ -463,7 +484,7 @@ ICELAND_PLACES = [
                 "source": VISIT_SOUTH_ICELAND,
             }
         ],        "why_visit": (
-            "Choose ÃžÃ³rsmÃ¶rk for immersive hiking, mountain views, and a feeling of entering a "
+            "Choose Þórsmörk for immersive hiking, mountain views, and a feeling of entering a "
             "remote natural amphitheater."
         ),
         "time_required": "Full day with specialized transport or multi-day trek",
@@ -471,7 +492,7 @@ ICELAND_PLACES = [
             "Glacier-framed valleys",
             "Highland hiking routes",
             "Braided river landscapes",
-            "Laugavegur and FimmvÃ¶rÃ°uhÃ¡ls trail connections",
+            "Laugavegur and Fimmvörðuháls trail connections",
         ],
         "tags": ["hiking", "mountains", "nature", "adventure"],
         "activities": ["Hiking", "Trekking", "Photography", "Nature"],
@@ -483,7 +504,7 @@ ICELAND_PLACES = [
             {
                 "title": "River crossings and highland roads",
                 "body": (
-                    "Access to ÃžÃ³rsmÃ¶rk involves highland roads and river crossings. Conditions "
+                    "Access to Þórsmörk involves highland roads and river crossings. Conditions "
                     "should be checked before travel, and unsuitable vehicles should not attempt "
                     "the route."
                 ),
@@ -526,7 +547,7 @@ ICELAND_PLACES = [
         ),
         "description": (
             "A broad coastal route with famous sights such as waterfalls, glacier views, black "
-            "sand beaches, and access points toward hiking regions and VatnajÃ¶kull landscapes."
+            "sand beaches, and access points toward hiking regions and Vatnajökull landscapes."
         ),
         "media": [
             {
@@ -645,7 +666,7 @@ ICELAND_AUGUST_2026_MONTHLY_FACTORS = {
     ],
     "accessibility_information": (
         "August can support access to highland destinations such as Landmannalaugar and "
-        "ÃžÃ³rsmÃ¶rk when roads are open, but conditions, vehicle suitability, and reservations "
+        "Þórsmörk when roads are open, but conditions, vehicle suitability, and reservations "
         "must be checked before travel."
     ),
     "seasonal_activities": [

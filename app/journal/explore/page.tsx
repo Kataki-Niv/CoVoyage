@@ -5,7 +5,7 @@ import { JournalExploreClient } from "./JournalExploreClient";
 
 export const metadata = {
   title: "Explore Journals | CoVoyage Journal",
-  description: "A vertical CoVoyage Journal feed for stories, guides, tips, photos, and videos.",
+  description: "A vertical CoVoyage Journal feed for stories, guides, media, and tips.",
 };
 
 export default async function JournalExplorePage({

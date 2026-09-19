@@ -57,7 +57,7 @@ const faqs = [
   {
     question: "Is CoVoyage free?",
     answer:
-      "For the current hackathon version, the core CoVoyage experience is presented as a free platform.",
+      "Yes. CoVoyage is free to use, so travelers can explore destinations, build their profile, and discover compatible travel connections without a subscription.",
   },
   {
     question: "How do I get started?",
@@ -98,8 +98,8 @@ export default function Home() {
               </div>
 
               <div className="mx-auto mt-10 max-w-4xl divide-y divide-white/10 border-y border-white/10">
-                {faqs.map((faq, index) => (
-                  <details className="group" key={faq.question} name="covoyage-faq" open={index === 0}>
+                {faqs.map((faq) => (
+                  <details className="group" key={faq.question} name="covoyage-faq">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-6 text-left text-base font-medium text-[#f8f4ea] outline-none transition duration-300 hover:text-white focus-visible:ring-2 focus-visible:ring-white/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] [&::-webkit-details-marker]:hidden">
                       <span>{faq.question}</span>
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-white/14 text-xl leading-none text-white/62 transition duration-300 group-open:border-white/28 group-open:text-white">

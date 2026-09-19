@@ -197,7 +197,7 @@ export function EssentialsBagPageClient() {
                 CoVoyage Essentials
               </p>
               <h1 className="mt-4 font-serif text-5xl leading-tight text-white sm:text-6xl">
-                My Essentials Bag
+                My Essentials Planning Bag
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-7 text-white/64">
                 Review the practical items you saved for your upcoming journey.
@@ -242,7 +242,7 @@ export function EssentialsBagPageClient() {
                 Your bag is empty.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-white/62">
-                Add a few useful travel essentials from the catalog, then come
+                Save a few useful travel essentials from the catalog, then come
                 back here to review them.
               </p>
               <Link
@@ -339,7 +339,7 @@ export function EssentialsBagPageClient() {
 
               <aside className="border border-white/10 bg-[#151515] p-5 lg:sticky lg:top-28">
                 <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#d8b7aa]">
-                  Bag Summary
+                  Planning Summary
                 </p>
                 <div className="mt-5 space-y-4 border-y border-white/10 py-5 text-sm text-white/62">
                   <div className="flex items-center justify-between gap-4">
@@ -347,7 +347,7 @@ export function EssentialsBagPageClient() {
                     <span>{itemCount}</span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span>Estimated total</span>
+                    <span>Estimated Price</span>
                     <span>{formatCurrency(subtotalCents, summaryCurrency)}</span>
                   </div>
                 </div>
@@ -371,3 +371,4 @@ export function EssentialsBagPageClient() {
     </AuthGuard>
   );
 }
+

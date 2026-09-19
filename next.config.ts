@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "i.pinimg.com",
       },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "8000",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "8000",
+      },
     ],
   },
   webpack: (config, { dev }) => {

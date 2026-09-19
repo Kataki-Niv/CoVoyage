@@ -5,12 +5,10 @@ import {
   BookOpen,
   Camera,
   Check,
-  Film,
   Lightbulb,
   PenLine,
   Plus,
   Send,
-  Sparkles,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -38,12 +36,13 @@ import {
   featuredJournalPost,
   insightJournalPosts,
   journalPosts,
+  type JournalCategory,
   type JournalPost,
 } from "@/lib/journalData";
 
 const filters = ["All", "Stories", "Guides", "Media", "Tips"] as const;
 type ActiveFilter = (typeof filters)[number];
-type CreateContentCategory = "Story" | "Guide" | "Tip";
+type CreateContentCategory = JournalCategory;
 type CreateFormat = "Text" | "Photo" | "Video";
 type MediaSelection = {
   file: File;
@@ -70,7 +69,7 @@ type JournalFormState = {
 const emptyJournalForm: JournalFormState = {
   title: "",
   destination: "",
-  category: "Story",
+  category: "Stories",
   format: "Text",
   excerpt: "",
   content: "",
@@ -80,11 +79,15 @@ const emptyJournalForm: JournalFormState = {
 };
 
 function toBackendCategory(category: CreateContentCategory): JournalBackendCategory {
-  if (category === "Guide") {
+  if (category === "Guides") {
     return "guides";
   }
 
-  if (category === "Tip") {
+  if (category === "Media") {
+    return "media";
+  }
+
+  if (category === "Tips") {
     return "tips";
   }
 
@@ -105,14 +108,18 @@ function toBackendFormat(format: CreateFormat): JournalBackendFormat {
 
 function fromBackendCategory(category: Blog["category"]): CreateContentCategory {
   if (category === "guides") {
-    return "Guide";
+    return "Guides";
+  }
+
+  if (category === "media" || category === "photos" || category === "videos") {
+    return "Media";
   }
 
   if (category === "tips") {
-    return "Tip";
+    return "Tips";
   }
 
-  return "Story";
+  return "Stories";
 }
 
 function fromBackendFormat(blog: Blog): CreateFormat {
@@ -173,12 +180,10 @@ function formatFileSize(size: number) {
 }
 
 const typeIcons = {
-  "Video Journal": Film,
-  "Photo Journal": Camera,
-  "Text Journal": PenLine,
-  "Travel Guide": BookOpen,
-  "Travel Tip": Lightbulb,
-  "Community Story": Sparkles,
+  Stories: PenLine,
+  Guides: BookOpen,
+  Media: Camera,
+  Tips: Lightbulb,
 };
 
 export function JournalPageClient() {
@@ -199,13 +204,7 @@ export function JournalPageClient() {
       return journalPosts;
     }
 
-    if (activeFilter === "Media") {
-      return journalPosts.filter(
-        (post) => post.filter === "Photos" || post.filter === "Videos",
-      );
-    }
-
-    return journalPosts.filter((post) => post.filter === activeFilter);
+    return journalPosts.filter((post) => post.category === activeFilter);
   }, [activeFilter]);
 
   const handleJournalSaved = (blog: Blog) => {
@@ -253,15 +252,15 @@ export function JournalPageClient() {
 
 function JournalHeader() {
   return (
-    <section className="border-b border-white/10 bg-[#050505] px-5 py-12 text-white sm:px-8 lg:py-16">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5">
+    <section className="bg-[#050505] px-5 pb-3 pt-8 text-white sm:px-8 lg:pb-4 lg:pt-10">
+      <div className="mx-auto flex max-w-7xl flex-col items-start gap-4 text-left">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.34em] text-white/50">
             CoVoyage Journals
           </p>
         </div>
         <div className="flex flex-col items-start gap-3">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap justify-start gap-3">
             <Link
               className="inline-flex h-11 items-center justify-center rounded-full border border-white/18 px-5 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-white/45"
               href="/journal/explore"
@@ -417,7 +416,6 @@ function MyJournalCard({
   onRefresh: () => void;
 }) {
   const [message, setMessage] = useState("");
-  const format = fromBackendFormat(journal);
   const category = fromBackendCategory(journal.category);
 
   const handleDelete = async () => {
@@ -461,7 +459,7 @@ function MyJournalCard({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/46">
-            {category} / {format} / {journal.status}
+            {category} / {journal.status}
           </p>
           <h3 className="mt-3 font-serif text-2xl leading-tight text-[#f8f4ea]">
             {journal.title}
@@ -506,10 +504,12 @@ function MyJournalCard({
 }
 
 function FeaturedJournal({ post }: { post: JournalPost }) {
+  const Icon = typeIcons[post.category];
+
   return (
     <section className="px-5 py-16 sm:px-8 lg:py-24">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 lg:grid-cols-[0.38fr_0.62fr] lg:items-end">
+        <div className="grid gap-8 lg:grid-cols-[0.38fr_0.62fr] lg:items-start">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-white/46">
               Featured Journal
@@ -521,7 +521,7 @@ function FeaturedJournal({ post }: { post: JournalPost }) {
               {post.excerpt}
             </p>
             <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs uppercase tracking-[0.18em] text-white/46">
-              <span>{post.type}</span>
+              <span>{post.category}</span>
               <span>{post.destination}</span>
               <span>{post.readingTime}</span>
             </div>
@@ -539,7 +539,7 @@ function FeaturedJournal({ post }: { post: JournalPost }) {
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,25,23,0.06),rgba(28,25,23,0.62))]" />
             <div className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/55 bg-black/38 text-white backdrop-blur-xl">
-              <Film className="h-8 w-8" strokeWidth={1.4} />
+              <Icon className="h-8 w-8" strokeWidth={1.4} />
             </div>
             <span className="absolute bottom-6 left-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white">
               View Journal
@@ -554,7 +554,7 @@ function FeaturedJournal({ post }: { post: JournalPost }) {
 
 function TravelerGallery({ posts }: { posts: JournalPost[] }) {
   return (
-    <section className="px-5 pb-16 sm:px-8 lg:pb-24" id="explore">
+    <section className="px-5 pb-16 pt-12 sm:px-8 lg:pb-24 lg:pt-16" id="explore">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -565,10 +565,6 @@ function TravelerGallery({ posts }: { posts: JournalPost[] }) {
               Field notes, films, photos, and guides
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-7 text-white/60">
-            A mixed community feed for the stories travelers actually bring
-            home.
-          </p>
         </div>
         <div className="grid auto-rows-[minmax(280px,auto)] gap-5 lg:grid-cols-12">
           {posts.map((post, index) => (
@@ -581,7 +577,7 @@ function TravelerGallery({ posts }: { posts: JournalPost[] }) {
 }
 
 function JournalCard({ post, variant }: { post: JournalPost; variant: number }) {
-  const Icon = typeIcons[post.type];
+  const Icon = typeIcons[post.category];
   const wide = variant === 0 || variant === 3;
 
   return (
@@ -605,7 +601,7 @@ function JournalCard({ post, variant }: { post: JournalPost; variant: number }) 
         <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-white/76">
           <span className="inline-flex items-center gap-2">
             <Icon className="h-4 w-4" strokeWidth={1.5} />
-            {post.type}
+            {post.category}
           </span>
           <span>{post.destination}</span>
         </div>
@@ -667,6 +663,23 @@ function CommunitySection() {
 }
 
 function InsightsSection() {
+  const planningNotes = [
+    {
+      title: "Reading the Chilean Lake District Weather Window",
+      destination: "Chile",
+      readingTime: "3 min read",
+      description:
+        "A lightweight planning note for lake crossings, rain shells, bus links, and volcano-view days that need flexible timing.",
+    },
+    {
+      title: "Sri Lanka Rail Days Without Rushing Them",
+      destination: "Sri Lanka",
+      readingTime: "3 min read",
+      description:
+        "A lightweight editorial tip for seat planning, tea-country stopovers, station snacks, and keeping scenic routes unhurried.",
+    },
+  ];
+
   return (
     <section className="px-5 py-16 sm:px-8 lg:py-24">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.32fr_0.68fr]">
@@ -696,17 +709,16 @@ function InsightsSection() {
               </p>
             </Link>
           ))}
-          {["Navigating Visa Requirements", "Local Etiquette Tips"].map((title) => (
-            <div className="border-b border-white/10 pb-5" key={title}>
+          {planningNotes.map((note) => (
+            <div className="border-b border-white/10 pb-5" key={note.title}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/46">
-                Planning note / 3 min read
+                {note.destination} / {note.readingTime}
               </p>
               <h3 className="mt-3 font-serif text-2xl leading-tight text-[#f8f4ea]">
-                {title}
+                {note.title}
               </h3>
               <p className="mt-3 text-sm leading-6 text-white/60">
-                A lightweight editorial tip from the CoVoyage desk for smoother
-                preparation.
+                {note.description}
               </p>
             </div>
           ))}
@@ -1057,9 +1069,10 @@ export function CreatePostModal({
               onChange={(event) => setField("category", event.target.value)}
               value={form.category}
             >
-              <option>Story</option>
-              <option>Guide</option>
-              <option>Tip</option>
+              <option>Stories</option>
+              <option>Guides</option>
+              <option>Media</option>
+              <option>Tips</option>
             </select>
           </label>
           <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-white/50">

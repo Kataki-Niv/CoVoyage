@@ -83,7 +83,7 @@ export function TravelerReviewsStrip() {
         onMouseLeave={() => setIsPaused(false)}
       >
         <p className="text-xs font-medium uppercase tracking-[0.34em] text-white/45">
-          Travelers Say It Best
+          Travellers Say It Best
         </p>
 
         <div className="mt-6 grid gap-6 md:h-[19.5rem] md:grid-cols-[0.34fr_0.66fr] md:items-stretch lg:h-[21rem]">

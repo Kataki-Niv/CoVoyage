@@ -150,7 +150,7 @@ export function CovoyageJournalsSection() {
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.42)_54%,rgba(5,5,5,0.86)_100%)]" />
               <div className="absolute left-6 top-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
                 <Film className="h-4 w-4" strokeWidth={1.5} />
-                Featured Video Journal
+                Media
               </div>
               <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/34 bg-black/38 text-white backdrop-blur-xl">
                 <Play className="ml-1 h-6 w-6 fill-current" strokeWidth={1.5} />
@@ -180,7 +180,7 @@ export function CovoyageJournalsSection() {
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.12)_0%,rgba(5,5,5,0.82)_100%)]" />
                 <div className="absolute left-5 top-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/66">
                   <Images className="h-4 w-4" strokeWidth={1.5} />
-                  {photoPost.type}
+                  {photoPost.category}
                 </div>
                 <div className="absolute bottom-14 left-5 right-5 transition duration-300 group-hover:-translate-y-1">
                   <p className="text-xs uppercase tracking-[0.24em] text-white/48">
@@ -198,7 +198,7 @@ export function CovoyageJournalsSection() {
               >
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/48">
                   <PenLine className="h-4 w-4" strokeWidth={1.5} />
-                  {textPost.type}
+                  {textPost.category}
                 </div>
                 <Quote className="mt-8 h-7 w-7 text-white/26" strokeWidth={1.2} />
                 <p className="mt-5 font-serif text-2xl leading-snug text-white transition duration-300 group-hover:-translate-y-1">

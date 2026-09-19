@@ -78,8 +78,8 @@ function DestinationHero({
         <div
           className={
             isDarkEditorial
-              ? "relative min-h-[430px] overflow-hidden bg-[#111112] shadow-2xl shadow-black/35 sm:min-h-[540px] lg:min-h-[620px]"
-              : "relative min-h-[430px] overflow-hidden bg-[#d9c0b3] sm:min-h-[540px] lg:min-h-[620px]"
+              ? "relative min-h-[320px] overflow-hidden bg-[#111112] shadow-2xl shadow-black/35 sm:min-h-[410px] lg:min-h-[500px]"
+              : "relative min-h-[320px] overflow-hidden bg-[#d9c0b3] sm:min-h-[410px] lg:min-h-[500px]"
           }
         >
           <Image
@@ -293,6 +293,7 @@ function JourneyPlaceSection({
 }) {
   const image = <JourneyPlaceImage isDarkEditorial={isDarkEditorial} place={place} />;
   const copy = <JourneyPlaceCopy isDarkEditorial={isDarkEditorial} place={place} />;
+  const textFirst = place.align === "left";
 
   return (
     <section
@@ -301,17 +302,24 @@ function JourneyPlaceSection({
           ? "border-y border-white/10 bg-[#111112]/56 px-4 py-5 transition-colors duration-300 hover:bg-[#151515]/72 sm:px-5 lg:px-6"
           : "border-y border-[#e6d5cb] bg-[#fffaf3]/45 px-4 py-5 sm:px-5 lg:px-6"
       }
+      id={place.placeSlug ? `place-${place.placeSlug}` : undefined}
     >
-      <article className="grid items-start gap-5 md:grid-cols-[minmax(230px,320px)_minmax(0,1fr)] md:gap-7">
-        {place.align === "left" ? (
+      <article
+        className={
+          textFirst
+            ? "grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] md:gap-8 lg:gap-10"
+            : "grid items-center gap-6 md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:gap-8 lg:gap-10"
+        }
+      >
+        {textFirst ? (
           <>
-            {image}
             {copy}
+            {image}
           </>
         ) : (
           <>
-            <div className="md:order-2">{image}</div>
-            <div className="md:order-1">{copy}</div>
+            {image}
+            {copy}
           </>
         )}
       </article>
@@ -337,8 +345,8 @@ function JourneyPlaceImage({
     <figure
       className={
         isDarkEditorial
-          ? "group relative aspect-[4/3] overflow-hidden border border-white/10 bg-[#151515] shadow-2xl shadow-black/25"
-          : "relative aspect-[4/3] overflow-hidden border border-[#dfc9be] bg-[#e6d3c9] shadow-lg shadow-[#b99686]/10"
+          ? "group relative aspect-[4/3] w-full max-w-[360px] justify-self-center overflow-hidden border border-white/10 bg-[#151515] shadow-2xl shadow-black/25 md:justify-self-stretch"
+          : "relative aspect-[4/3] w-full max-w-[360px] justify-self-center overflow-hidden border border-[#dfc9be] bg-[#e6d3c9] shadow-lg shadow-[#b99686]/10 md:justify-self-stretch"
       }
     >
       <Image

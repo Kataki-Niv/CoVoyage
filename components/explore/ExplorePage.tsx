@@ -3,7 +3,16 @@ import Link from "next/link";
 
 import { ExploreSearchForm } from "@/components/explore/ExploreSearchForm";
 import { FloatingAiAssistant } from "@/components/explore/FloatingAiAssistant";
-import type { BackendFeaturedDestinationsResponse } from "@/lib/destinationApi";
+import { getCuratedPlaceContent } from "@/components/explore/curatedPlaceContent";
+import {
+  getCuratedCountryHeroImage,
+  getCuratedPlaceImage,
+} from "@/components/explore/curatedPlaceImages";
+import type {
+  BackendFeaturedDestination,
+  BackendFeaturedDestinationsResponse,
+  BackendFeaturedPlace,
+} from "@/lib/destinationApi";
 
 type FeaturedCountry = {
   country: string;
@@ -96,7 +105,7 @@ function FeaturedThisMonth({
       <div className="mx-auto max-w-7xl">
         <header className="mx-auto max-w-3xl pb-10 text-center sm:pb-12 lg:pb-14">
           <p className="text-xs font-medium uppercase tracking-[0.34em] text-[#D8BE8A]">
-            Explore This Month
+            Monthly Destination Picks
           </p>
           <h2
             className="mt-3 font-serif text-4xl leading-tight text-[#F5F1E8] sm:text-5xl lg:text-6xl"
@@ -534,6 +543,49 @@ const fallbackFeaturedCountries: FeaturedCountry[] = [
   },
 ];
 
+const countryRecommendationCopy: Record<string, string> = {
+  argentina:
+    "Argentina is a strong pick this month if you want expressive city life, wine country, and big landscapes in one route. Buenos Aires gives the trip food, tango, and neighborhood texture, while Mendoza and Patagonia-style extensions can make the journey feel expansive without needing every day to be packed.",
+  canada:
+    "Canada works well this month for travelers who want outdoor scale with reliable visitor infrastructure. National parks, lake routes, and city bases are especially appealing when longer days support hikes, scenic drives, and relaxed evenings, though popular park access should still be planned early.",
+  france:
+    "France is especially rewarding this month if you want culture, food, and regional variety without treating the trip as one city only. Paris can anchor museums and neighborhoods, while Provence, the Riviera, or wine regions add markets, villages, and slower seasonal days.",
+  guatemala:
+    "Guatemala stands out for a value-rich trip through colonial streets, volcanic lake scenery, Maya heritage, and market culture. It is a good month for travelers who want the route to feel layered, with Antigua, Lake Atitlan, and northern ruins each adding a different pace.",
+  iceland:
+    "Iceland is a compelling choice this month because late summer keeps scenic routes more reachable than much of the year. Long daylight, Highlands access, waterfalls, black-sand beaches, and glacier landscapes make it easier to build a road trip around nature rather than weather logistics alone.",
+  indonesia:
+    "Indonesia is a good choice this month for travelers who want island culture, food, temples, and water-based days. Bali and Java can combine rice terraces, local rituals, markets, and coastal downtime, while careful routing helps avoid turning the archipelago into rushed transfers.",
+  italy:
+    "Italy is rewarding this month for warm city evenings, art, food, and regional routes that can mix historic centers with coast or countryside. It can be busier and pricier than some European options, so the best trips balance major sights with slower neighborhood time and advance booking.",
+  japan:
+    "Japan is a strong seasonal pick for travelers who want summer festivals, food streets, temples, and highly connected city travel. Heat and humidity matter, so the best routes use early starts, indoor breaks, evening neighborhoods, and northern or mountain options when possible.",
+  kenya:
+    "Kenya is compelling this month for wildlife-focused travelers, with safari routes, conservancies, and coastal extensions offering very different textures. Planning with reputable guides and park guidance matters, but the payoff is a route built around landscapes and animal movement rather than checklist sightseeing.",
+  mexico:
+    "Mexico works well this month for travelers who want food, archaeology, city neighborhoods, and coastal or highland variety. Routes can pair Mexico City or Oaxaca with ruins, markets, and regional cooking, while weather and altitude should shape the daily pace.",
+  morocco:
+    "Morocco is a strong recommendation this month for travelers drawn to medinas, craft traditions, desert-edge landscapes, and layered city stays. The best routes leave time for slower navigation, tea stops, markets, and cooler morning or evening exploration.",
+  "new-zealand":
+    "New Zealand is best approached this month as a nature-forward trip with strong planning around weather and driving distances. Even outside the warmest summer window, scenic roads, Maori cultural context, coastal towns, and national parks can create a memorable route when logistics are realistic.",
+  norway:
+    "Norway is a rewarding pick this month for fjords, rail journeys, coastal cities, and mountain scenery. Long daylight and outdoor access make scenic days feel generous, though ferries, tunnels, weather, and high local costs are worth building into the plan.",
+  peru:
+    "Peru is especially appealing this month for travelers who want archaeology, Andes culture, markets, and dramatic landscapes. Cusco, the Sacred Valley, and Machu Picchu can form a strong route, but altitude makes slower first days and careful ticket planning part of the experience.",
+  portugal:
+    "Portugal is a strong this-month choice for walkable cities, Atlantic coast, food, and relative value compared with many Western European trips. Lisbon and Porto pair well with day trips, tiled streets, seafood, and slower neighborhood evenings.",
+  "south-africa":
+    "South Africa works well this month for travelers who want a varied route across Cape Town, wine regions, coastal drives, and wildlife experiences. The country rewards practical planning, but it offers unusual range in a single trip, from city culture to national parks.",
+  spain:
+    "Spain is a lively pick this month for travelers who want festivals, late evenings, regional food, and city-to-coast variety. Heat can shape the schedule, so the strongest trips use mornings for sights, afternoons for rest, and evenings for markets, tapas, and local celebrations.",
+  thailand:
+    "Thailand is a strong option this month for travelers who want temples, street food, markets, islands, and warm hospitality. Weather can vary by coast, so a good route chooses regions deliberately and leaves room for slower meals, local transport, and temple etiquette.",
+  turkey:
+    "Turkey is especially rewarding this month for travelers who want Istanbul's layered history, coastal towns, Cappadocia landscapes, and generous food culture. Itineraries work best when they leave space for markets, ferries, tea breaks, and early starts at major sites.",
+  vietnam:
+    "Vietnam is a strong pick this month for street food, rail-linked cities, old towns, river landscapes, and coastal breaks. A good route balances Hanoi or Ho Chi Minh City energy with Hoi An, Hue, or northern scenery so the trip feels paced rather than rushed.",
+};
+
 function getMonthName(month: number) {
   return monthNames[month - 1] ?? fallbackMonthlyFeature.month;
 }
@@ -544,6 +596,46 @@ function formatRank(rank: number) {
 
 function getVisiblePlaces(country: FeaturedCountry) {
   return country.places;
+}
+
+function getCountryRecommendationCopy(destination: BackendFeaturedDestination) {
+  const countryId = destination.country_slug;
+
+  return (
+    countryRecommendationCopy[countryId] ??
+    `${destination.country_name ?? destination.country?.name ?? "This destination"} is a strong monthly pick for travelers who want a well-rounded route shaped by season, local culture, practical access, and memorable places. Build the trip around the strongest current experiences, then leave room for local pacing and regional differences.`
+  );
+}
+
+function joinReadableList(items: string[]) {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function buildPlaceItineraryDescription(place: BackendFeaturedPlace) {
+  const curatedContent = getCuratedPlaceContent(place.place_slug);
+
+  if (curatedContent) {
+    return curatedContent.journeyDescription;
+  }
+
+  const name = place.place_name ?? place.place_slug;
+  const duration = place.place?.time_required ?? "2-3 days";
+  const description = place.place?.description ?? place.place?.story;
+  const highlights = place.place?.highlights?.slice(0, 3);
+  const highlightText = highlights?.length
+    ? ` Include ${joinReadableList(highlights)}.`
+    : "";
+  const descriptionText = description ? ` ${description}` : "";
+
+  return `Spend ${duration} in ${name}.${descriptionText}${highlightText}`.trim();
 }
 
 function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | null) {
@@ -563,6 +655,7 @@ function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | nul
     const countryId = destination.country_slug;
     const fallback = fallbackBySlug.get(countryId);
     const backendPlaces = destination.recommended_places ?? destination.selected_places ?? [];
+    const curatedHeroImage = getCuratedCountryHeroImage(countryId);
     const fallbackPlacesBySlug = new Map(
       (fallback?.places ?? []).map((place) => [
         place.shortName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
@@ -583,7 +676,7 @@ function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | nul
         year,
         featuredCategory: "Monthly Pick",
         featuredHeadline: "A strong CoVoyage recommendation for this month",
-        whyThisMonth: destination.recommendation_reason,
+        whyThisMonth: getCountryRecommendationCopy(destination),
         heroImage:
           destination.country?.hero_media?.url ??
           "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=88",
@@ -600,27 +693,34 @@ function mapFeaturedSnapshot(snapshot: BackendFeaturedDestinationsResponse | nul
       country: destination.country_name ?? destination.country?.name ?? baseCountry.country,
       month,
       year,
-      featuredCategory: `Rank ${formatRank(destination.rank)} / Score ${destination.final_score}`,
-      whyThisMonth: `${destination.recommendation_reason} Recommendation score: ${destination.final_score}.`,
+      featuredCategory: baseCountry.featuredCategory,
+      heroImage: curatedHeroImage?.image ?? baseCountry.heroImage,
+      heroImageAlt: curatedHeroImage?.imageAlt ?? baseCountry.heroImageAlt,
+      whyThisMonth: getCountryRecommendationCopy(destination),
       places: backendPlaces.map((place, index) => {
         const placeSlug = place.place_slug;
         const fallbackPlace = fallbackPlacesBySlug.get(placeSlug) ?? baseCountry.places[index];
+        const curatedImage = getCuratedPlaceImage(placeSlug);
 
         return {
           ...(fallbackPlace ?? {
-            image:
-              place.media?.url ??
-              "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=86",
-            imageAlt:
-              place.media?.alt ??
-              place.media?.alt_text ??
-              `${place.place_name ?? place.place_slug} travel scene`,
             align: index % 2 === 0 ? "left" : "right",
           }),
+          image:
+            curatedImage?.image ??
+            fallbackPlace?.image ??
+            place.media?.url ??
+            "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=86",
+          imageAlt:
+            curatedImage?.imageAlt ??
+            fallbackPlace?.imageAlt ??
+            place.media?.alt ??
+            place.media?.alt_text ??
+            `${place.place_name ?? place.place_slug} travel scene`,
           number: formatRank(place.rank),
           name: place.place_name ?? fallbackPlace?.name ?? place.place_slug,
           shortName: place.place_name ?? fallbackPlace?.shortName ?? place.place_slug,
-          description: `${place.recommendation_reason} Score: ${place.score}.`,
+          description: buildPlaceItineraryDescription(place),
         };
       }),
     };

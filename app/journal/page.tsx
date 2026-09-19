@@ -6,7 +6,7 @@ import { JournalPageClient } from "./JournalPageClient";
 export const metadata = {
   title: "CoVoyage Journal | Stories from the Road",
   description:
-    "Community travel journals, photos, videos, guides, and field notes from CoVoyage travelers.",
+    "Community travel journals across stories, guides, media, and tips from CoVoyage travelers.",
 };
 
 export default function JournalPage() {

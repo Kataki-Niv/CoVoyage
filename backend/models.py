@@ -811,7 +811,7 @@ class GroupVoyageBase(BaseModel):
     description: str = Field(..., min_length=20, max_length=1200)
     tags: List[str] = Field(default_factory=list, max_length=12)
     budget_range: Optional[str] = Field(default=None, max_length=100)
-    max_participants: StrictInt = Field(default=8, ge=2, le=50)
+    max_participants: StrictInt = Field(default=8, ge=3, le=50)
     status: Literal["open", "closed"] = "open"
     visibility: Literal["public", "private"] = "public"
 
@@ -847,7 +847,7 @@ class GroupVoyageUpdate(BaseModel):
     description: Optional[str] = Field(default=None, min_length=20, max_length=1200)
     tags: Optional[List[str]] = Field(default=None, max_length=12)
     budget_range: Optional[str] = Field(default=None, max_length=100)
-    max_participants: Optional[StrictInt] = Field(default=None, ge=2, le=50)
+    max_participants: Optional[StrictInt] = Field(default=None, ge=3, le=50)
     visibility: Optional[Literal["public", "private"]] = None
 
     @field_validator("tags", mode="before")
@@ -1336,7 +1336,9 @@ class BlogBase(BaseModel):
     content: str = Field(..., min_length=20, max_length=50000)
     excerpt: Optional[str] = Field(default=None, max_length=300)
     tags: List[str] = Field(default_factory=list, max_length=12)
-    category: Optional[Literal["stories", "guides", "photos", "videos", "tips"]] = None
+    category: Optional[
+        Literal["stories", "guides", "media", "photos", "videos", "tips"]
+    ] = None
     format: Literal["text", "photo", "video"] = "text"
     destination_slug: Optional[str] = Field(default=None, min_length=2, max_length=80)
     destination_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
@@ -1351,6 +1353,14 @@ class BlogBase(BaseModel):
             return None
 
         return validate_destination_slug(slug, "Destination slug")
+
+    @field_validator("category")
+    @classmethod
+    def normalize_blog_category(cls, category: Optional[str]) -> Optional[str]:
+        if category in {"photos", "videos"}:
+            return "media"
+
+        return category
 
     @field_validator("cover_image_url", "media_url", mode="before")
     @classmethod
@@ -1391,7 +1401,9 @@ class BlogUpdate(BaseModel):
     content: Optional[str] = Field(default=None, min_length=20, max_length=50000)
     excerpt: Optional[str] = Field(default=None, max_length=300)
     tags: Optional[List[str]] = Field(default=None, max_length=12)
-    category: Optional[Literal["stories", "guides", "photos", "videos", "tips"]] = None
+    category: Optional[
+        Literal["stories", "guides", "media", "photos", "videos", "tips"]
+    ] = None
     format: Optional[Literal["text", "photo", "video"]] = None
     destination_slug: Optional[str] = Field(default=None, min_length=2, max_length=80)
     destination_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
@@ -1407,6 +1419,11 @@ class BlogUpdate(BaseModel):
             return None
 
         return validate_destination_slug(slug, "Destination slug")
+
+    @field_validator("category")
+    @classmethod
+    def normalize_blog_category(cls, category: Optional[str]) -> Optional[str]:
+        return BlogBase.normalize_blog_category(category)
 
     @field_validator("cover_image_url", "media_url", mode="before")
     @classmethod

@@ -4,8 +4,10 @@ import {
   CalendarDays,
   Check,
   Compass,
+  Heart,
   MapPin,
   MessageCircle,
+  Minus,
   Plane,
   Plus,
   RefreshCw,
@@ -18,8 +20,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode, RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Footer } from "@/components/layout/Footer";
@@ -179,7 +181,7 @@ type GroupDraft = {
   description: string;
   tags: string;
   budget_range: string;
-  max_participants: number;
+  max_participants: number | "";
   visibility: GroupVisibility;
 };
 
@@ -187,6 +189,62 @@ const emptyStateMessage =
   "No strong matches yet. Try updating your destination, dates, or interests.";
 const tribeMatchCacheKey = "covoyage_find_your_tribe_matches";
 const tribeMatchScrollKey = "covoyage_find_your_tribe_scroll";
+const tribeModeStorageKey = "covoyage_find_your_tribe_mode";
+const tribeRequestFocusKey = "covoyage_focus_incoming_requests";
+const tribeRequestRefreshEvent = "covoyage-tribe-requests-change";
+const tribeIncomingFocusEvent = "covoyage-focus-incoming-requests";
+const groupRequestFocusKey = "covoyage_focus_group_requests";
+const groupRequestRefreshEvent = "covoyage-group-requests-change";
+const groupIncomingFocusEvent = "covoyage-focus-group-requests";
+const soloConnectionSyncIntervalMs = 15000;
+const groupVoyageSyncIntervalMs = 15000;
+
+function notifyTribeRequestsChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(tribeRequestRefreshEvent));
+}
+
+function notifyGroupRequestsChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(groupRequestRefreshEvent));
+}
+
+function isTribeMode(value: string | null): value is TribeMode {
+  return value === "solo" || value === "group";
+}
+
+function getInitialTribeMode(): TribeMode {
+  if (typeof window === "undefined") {
+    return "solo";
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const queryMode = searchParams.get("mode");
+
+  if (isTribeMode(queryMode)) {
+    return queryMode;
+  }
+
+  if (searchParams.get("focus") === "incoming-requests") {
+    return "solo";
+  }
+
+  let storedMode: string | null = null;
+
+  try {
+    storedMode = window.localStorage.getItem(tribeModeStorageKey);
+  } catch {
+    storedMode = null;
+  }
+
+  return isTribeMode(storedMode) ? storedMode : "solo";
+}
 
 const initialGroupDraft: GroupDraft = {
   title: "",
@@ -196,57 +254,12 @@ const initialGroupDraft: GroupDraft = {
   description: "",
   tags: "",
   budget_range: "",
-  max_participants: 8,
+  max_participants: "",
   visibility: "public",
 };
 
 const heroImage =
-  "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=2200&q=88";
-
-const groupTravelImage =
-  "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1600&q=84";
-
-const matchingJourneyImage =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=86";
-
-const matchSteps = [
-  {
-    number: "01",
-    title: "SHARED DESTINATIONS",
-    description:
-      "At least one preferred destination in common.",
-  },
-  {
-    number: "02",
-    title: "OVERLAPPING DATES",
-    description: "Travel windows overlap.",
-  },
-  {
-    number: "03",
-    title: "TRAVEL COMPATIBILITY",
-    description:
-      "Budget, travel style and languages contribute to compatibility.",
-  },
-  {
-    number: "04",
-    title: "AI COMPATIBILITY",
-    description:
-      "Semantic profile similarity helps rank the strongest matches.",
-  },
-  {
-    number: "05",
-    title: "TRAVEL PREFERENCES",
-    description: "Mutual travel preferences help determine eligibility.",
-  },
-];
-
-function formatTravelDates(start?: string | null, end?: string | null) {
-  if (!start || !end) {
-    return "Not specified";
-  }
-
-  return start === end ? start : `${start} to ${end}`;
-}
+  "/find your tribe.jpg";
 
 function formatFactorValue(value: string | string[]) {
   return Array.isArray(value) ? value.join(" · ") : value;
@@ -813,10 +826,308 @@ function IncomingRequestsPanel({
   );
 }
 
+function GroupVoyageDetails({
+  voyage,
+  editDraft,
+  editingVoyageId,
+  isSavingEdit,
+  actionId,
+  onEditDraftChange,
+  onSaveEdit,
+  onCancelEdit,
+  onStartEdit,
+  onCloseVoyage,
+  onLeaveVoyage,
+  onOpenGroupChat,
+  onCancelJoinRequest,
+}: {
+  voyage: GroupVoyage;
+  editDraft: GroupDraft;
+  editingVoyageId: string;
+  isSavingEdit: boolean;
+  actionId: string;
+  onEditDraftChange: (draft: GroupDraft) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onStartEdit: (voyage: GroupVoyage) => void;
+  onCloseVoyage: (voyage: GroupVoyage) => void;
+  onLeaveVoyage: (voyage: GroupVoyage) => void;
+  onOpenGroupChat: (voyage: GroupVoyage) => void;
+  onCancelJoinRequest: (voyage: GroupVoyage) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-[#f8f4ea]/20 pt-5">
+      <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#f8f4ea]/68">
+        Voyage details
+      </p>
+      <h3 className="mt-3 font-serif text-4xl leading-tight text-white">
+        {voyage.title}
+      </h3>
+      <p className="mt-3 text-sm leading-7 text-white/62">
+        {voyage.destination} · {formatGroupDates(voyage.start_date, voyage.end_date)}
+      </p>
+      <p className="mt-3 text-sm text-white/55">
+        {voyage.participant_count} of {voyage.max_participants} travellers are
+        participating.
+      </p>
+      <p className="mt-3 w-fit border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/42">
+        {(voyage.visibility || "public")} - {voyage.status}
+      </p>
+      {editingVoyageId === voyage.id ? (
+        <div className="mt-5 grid gap-3 border-t border-white/10 pt-5">
+          <input
+            className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+            placeholder="Voyage title"
+            value={editDraft.title}
+            onChange={(event) =>
+              onEditDraftChange({ ...editDraft, title: event.target.value })
+            }
+          />
+          <input
+            className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+            placeholder="Destination"
+            value={editDraft.destination}
+            onChange={(event) =>
+              onEditDraftChange({
+                ...editDraft,
+                destination: event.target.value,
+              })
+            }
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input
+              className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-[#f8f4ea]/45"
+              type="date"
+              value={editDraft.start_date}
+              onChange={(event) =>
+                onEditDraftChange({
+                  ...editDraft,
+                  start_date: event.target.value,
+                })
+              }
+            />
+            <input
+              className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-[#f8f4ea]/45"
+              type="date"
+              value={editDraft.end_date}
+              onChange={(event) =>
+                onEditDraftChange({
+                  ...editDraft,
+                  end_date: event.target.value,
+                })
+              }
+            />
+          </div>
+          <textarea
+            className="min-h-28 resize-none border border-white/10 bg-black/35 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+            placeholder="What kind of trip are you creating?"
+            value={editDraft.description}
+            onChange={(event) =>
+              onEditDraftChange({
+                ...editDraft,
+                description: event.target.value,
+              })
+            }
+          />
+          <div className="grid gap-3 sm:grid-cols-[1fr_0.45fr]">
+            <input
+              className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+              placeholder="Tags, comma separated"
+              value={editDraft.tags}
+              onChange={(event) =>
+                onEditDraftChange({ ...editDraft, tags: event.target.value })
+              }
+            />
+            <input
+              className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+              min={Math.max(3, voyage.participant_count)}
+              max={50}
+              type="number"
+              value={editDraft.max_participants}
+              onChange={(event) =>
+                onEditDraftChange({
+                  ...editDraft,
+                  max_participants: Number(event.target.value),
+                })
+              }
+            />
+          </div>
+          <input
+            className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+            placeholder="Budget range, optional"
+            value={editDraft.budget_range}
+            onChange={(event) =>
+              onEditDraftChange({
+                ...editDraft,
+                budget_range: event.target.value,
+              })
+            }
+          />
+          <select
+            className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-[#f8f4ea]/45"
+            value={editDraft.visibility}
+            onChange={(event) =>
+              onEditDraftChange({
+                ...editDraft,
+                visibility: event.target.value as GroupVisibility,
+              })
+            }
+          >
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="bg-[#f8f4ea] text-black hover:bg-white"
+              disabled={isSavingEdit}
+              type="button"
+              onClick={onSaveEdit}
+            >
+              <Check className="h-4 w-4" />
+              {isSavingEdit ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              className="border-white/16 bg-transparent text-white hover:bg-white/10"
+              disabled={isSavingEdit}
+              type="button"
+              variant="outline"
+              onClick={onCancelEdit}
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : voyage.description ? (
+        <p className="mt-5 text-sm leading-7 text-white/68">{voyage.description}</p>
+      ) : null}
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/38">
+          Participants
+        </p>
+        {voyage.participants?.length ? (
+          <div className="mt-4 grid gap-3">
+            {voyage.participants.map((participant) => {
+              const displayName = getGroupProfileName(participant);
+              const profileContext = getGroupProfileContext(participant);
+
+              return (
+                <div
+                  className="flex items-center gap-3 border border-white/10 bg-white/[0.03] p-3"
+                  key={participant.user_id}
+                >
+                  <MatchAvatar
+                    displayName={displayName}
+                    imageUrl={participant.profile_picture_url}
+                  />
+                  <div>
+                    <p className="font-serif text-2xl leading-tight text-white">
+                      {displayName}
+                    </p>
+                    {participant.username ? (
+                      <p className="mt-1 text-xs text-white/45">
+                        @{participant.username}
+                      </p>
+                    ) : null}
+                    {profileContext ? (
+                      <p className="mt-2 text-xs leading-5 text-white/50">
+                        {profileContext}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-white/50">
+            Participant profiles are not available yet.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs uppercase tracking-[0.22em] text-white/42">
+          {getGroupLifecycleLabel(voyage)}
+        </p>
+        {voyage.viewer_status === "creator" && editingVoyageId !== voyage.id ? (
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="w-fit bg-[#f8f4ea] text-black hover:bg-white"
+              disabled={actionId === voyage.id}
+              type="button"
+              onClick={() => onOpenGroupChat(voyage)}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Group Chat
+            </Button>
+            <Button
+              className="w-fit border-white/16 bg-transparent text-white hover:bg-white/10"
+              disabled={actionId === voyage.id}
+              type="button"
+              variant="outline"
+              onClick={() => onStartEdit(voyage)}
+            >
+              <Compass className="h-4 w-4" />
+              Edit Voyage
+            </Button>
+            {voyage.status === "open" ? (
+              <Button
+                className="w-fit border-red-300/25 bg-transparent text-red-100 hover:bg-red-950/35"
+                disabled={actionId === voyage.id}
+                type="button"
+                variant="outline"
+                onClick={() => onCloseVoyage(voyage)}
+              >
+                <X className="h-4 w-4" />
+                Close Voyage
+              </Button>
+            ) : null}
+          </div>
+        ) : voyage.viewer_status === "participant" ? (
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="w-fit bg-[#f8f4ea] text-black hover:bg-white"
+              disabled={actionId === voyage.id}
+              type="button"
+              onClick={() => onOpenGroupChat(voyage)}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Group Chat
+            </Button>
+            <Button
+              className="w-fit border-white/16 bg-transparent text-white hover:bg-white/10"
+              disabled={actionId === voyage.id}
+              type="button"
+              variant="outline"
+              onClick={() => onLeaveVoyage(voyage)}
+            >
+              <X className="h-4 w-4" />
+              Leave Voyage
+            </Button>
+          </div>
+        ) : voyage.viewer_status === "pending_sent" && voyage.status === "open" ? (
+          <Button
+            className="w-fit border-white/16 bg-transparent text-white hover:bg-white/10"
+            disabled={actionId === voyage.id}
+            type="button"
+            variant="outline"
+            onClick={() => onCancelJoinRequest(voyage)}
+          >
+            <X className="h-4 w-4" />
+            Cancel Request
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function GroupVoyagesView({
   voyages,
   selectedVoyage,
   pendingRequests,
+  creatorRequestsRef,
   draft,
   editDraft,
   editingVoyageId,
@@ -825,6 +1136,7 @@ function GroupVoyagesView({
   isSavingEdit,
   actionId,
   error,
+  createError,
   needsProfileCompletion,
   onDraftChange,
   onEditDraftChange,
@@ -844,6 +1156,7 @@ function GroupVoyagesView({
   voyages: GroupVoyage[];
   selectedVoyage: GroupVoyage | null;
   pendingRequests: GroupJoinRequest[];
+  creatorRequestsRef: RefObject<HTMLDivElement | null>;
   draft: GroupDraft;
   editDraft: GroupDraft;
   editingVoyageId: string;
@@ -852,6 +1165,7 @@ function GroupVoyagesView({
   isSavingEdit: boolean;
   actionId: string;
   error: string;
+  createError: string;
   needsProfileCompletion: boolean;
   onDraftChange: (draft: GroupDraft) => void;
   onEditDraftChange: (draft: GroupDraft) => void;
@@ -870,7 +1184,7 @@ function GroupVoyagesView({
 }) {
   return (
     <div className="mt-10 grid gap-8 xl:grid-cols-[0.8fr_1.2fr]">
-      <div className="space-y-6">
+      <div className="space-y-6 xl:sticky xl:bottom-8 xl:self-end">
         <div className="border border-white/10 bg-white/[0.035] p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -903,7 +1217,7 @@ function GroupVoyagesView({
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <input
-                className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-[#f8f4ea]/45"
+                className="covoyage-date-input border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition selection:bg-white/25 selection:text-white focus:border-[#f8f4ea]/45"
                 type="date"
                 value={draft.start_date}
                 onChange={(event) =>
@@ -911,7 +1225,7 @@ function GroupVoyagesView({
                 }
               />
               <input
-                className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-[#f8f4ea]/45"
+                className="covoyage-date-input border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition selection:bg-white/25 selection:text-white focus:border-[#f8f4ea]/45"
                 type="date"
                 value={draft.end_date}
                 onChange={(event) =>
@@ -927,28 +1241,76 @@ function GroupVoyagesView({
                 onDraftChange({ ...draft, description: event.target.value })
               }
             />
-            <div className="grid gap-3 sm:grid-cols-[1fr_0.45fr]">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,152px)]">
               <input
-                className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
+                className="min-w-0 border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
                 placeholder="Tags, comma separated"
                 value={draft.tags}
                 onChange={(event) =>
                   onDraftChange({ ...draft, tags: event.target.value })
                 }
               />
-              <input
-                className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
-                min={2}
-                max={50}
-                type="number"
-                value={draft.max_participants}
-                onChange={(event) =>
-                  onDraftChange({
-                    ...draft,
-                    max_participants: Number(event.target.value),
-                  })
-                }
-              />
+              <label className="grid min-w-0 gap-1">
+                <span className="break-words text-[10px] font-medium uppercase leading-4 tracking-[0.2em] text-white/38">
+                  Max travellers (minimum 3)
+                </span>
+                <div className="flex min-h-[3.125rem] w-full min-w-0 max-w-full items-center border border-white/10 bg-black/35 transition focus-within:border-[#f8f4ea]/45">
+                  <button
+                    aria-label="Decrease max travellers"
+                    className="grid h-full min-h-[3.125rem] w-10 shrink-0 place-items-center border-r border-[rgba(255,255,255,0.1)] text-white/45 transition hover:bg-white/8 hover:text-white disabled:cursor-not-allowed"
+                    disabled={
+                      draft.max_participants === "" ||
+                      draft.max_participants <= 3
+                    }
+                    type="button"
+                    onClick={() =>
+                      onDraftChange({
+                        ...draft,
+                        max_participants:
+                          draft.max_participants === ""
+                            ? 3
+                            : Math.max(3, draft.max_participants - 1),
+                      })
+                    }
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <input
+                    className="min-w-0 flex-1 bg-transparent px-2 py-3 text-center text-sm text-white outline-none placeholder:text-white/35"
+                    inputMode="numeric"
+                    maxLength={2}
+                    value={draft.max_participants}
+                    onChange={(event) => {
+                      const nextValue = event.target.value.replace(/\D/g, "");
+
+                      onDraftChange({
+                        ...draft,
+                        max_participants:
+                          nextValue === ""
+                            ? ""
+                            : Math.min(50, Number(nextValue)),
+                      });
+                    }}
+                  />
+                  <button
+                    aria-label="Increase max travellers"
+                    className="grid h-full min-h-[3.125rem] w-10 shrink-0 place-items-center border-l border-[rgba(255,255,255,0.1)] text-white/45 transition hover:bg-white/8 hover:text-white disabled:cursor-not-allowed"
+                    disabled={draft.max_participants !== "" && draft.max_participants >= 50}
+                    type="button"
+                    onClick={() =>
+                      onDraftChange({
+                        ...draft,
+                        max_participants:
+                          draft.max_participants === ""
+                            ? 3
+                            : Math.min(50, draft.max_participants + 1),
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </label>
             </div>
             <input
               className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
@@ -982,9 +1344,18 @@ function GroupVoyagesView({
             <Plus className="h-4 w-4" />
             {isCreating ? "Creating..." : "Create Voyage"}
           </Button>
+          {createError ? (
+            <p className="mt-3 border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm leading-6 text-red-100">
+              {createError}
+            </p>
+          ) : null}
         </div>
 
-        <div className="border border-white/10 bg-white/[0.025] p-5">
+        <div
+          className="border border-white/10 bg-white/[0.025] p-5"
+          id="creator-requests"
+          ref={creatorRequestsRef}
+        >
           <p className="text-xs font-medium uppercase tracking-[0.28em] text-white/42">
             Creator requests
           </p>
@@ -1116,6 +1487,8 @@ function GroupVoyagesView({
           {voyages.map((voyage) => {
             const isClosed = voyage.status === "closed";
             const isFull = voyage.participant_count >= voyage.max_participants;
+            const expandedVoyage =
+              selectedVoyage?.id === voyage.id ? selectedVoyage : null;
             const canRequest =
               (voyage.viewer_status === "none" ||
                 voyage.viewer_status === "declined" ||
@@ -1176,7 +1549,7 @@ function GroupVoyagesView({
                     onClick={() => onView(voyage.id)}
                   >
                     <Compass className="h-4 w-4" />
-                    View Voyage
+                    {expandedVoyage ? "Hide Details" : "View Voyage"}
                   </Button>
                   <Button
                     className={
@@ -1215,13 +1588,30 @@ function GroupVoyagesView({
                             : "Request to Join"}
                   </Button>
                 </div>
+                {expandedVoyage ? (
+                  <GroupVoyageDetails
+                    actionId={actionId}
+                    editDraft={editDraft}
+                    editingVoyageId={editingVoyageId}
+                    isSavingEdit={isSavingEdit}
+                    voyage={expandedVoyage}
+                    onCancelEdit={onCancelEdit}
+                    onCancelJoinRequest={onCancelJoinRequest}
+                    onCloseVoyage={onCloseVoyage}
+                    onEditDraftChange={onEditDraftChange}
+                    onLeaveVoyage={onLeaveVoyage}
+                    onOpenGroupChat={onOpenGroupChat}
+                    onSaveEdit={onSaveEdit}
+                    onStartEdit={onStartEdit}
+                  />
+                ) : null}
               </article>
             );
           })}
         </div>
 
         {selectedVoyage ? (
-          <div className="mt-6 border border-[#f8f4ea]/20 bg-black/45 p-5">
+          <div className="hidden">
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#f8f4ea]/68">
               Voyage details
             </p>
@@ -1306,7 +1696,7 @@ function GroupVoyagesView({
                   />
                   <input
                     className="border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#f8f4ea]/45"
-                    min={selectedVoyage.participant_count}
+                    min={Math.max(3, selectedVoyage.participant_count)}
                     max={50}
                     type="number"
                     value={editDraft.max_participants}
@@ -1515,7 +1905,9 @@ function GroupVoyagesView({
 
 export default function TribePage() {
   const router = useRouter();
-  const [mode, setMode] = useState<TribeMode>("solo");
+  const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
+  const groupRequestsRef = useRef<HTMLDivElement | null>(null);
+  const [mode, setMode] = useState<TribeMode>(getInitialTribeMode);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [error, setError] = useState("");
   const [isMatchingServiceError, setIsMatchingServiceError] = useState(false);
@@ -1525,7 +1917,6 @@ export default function TribePage() {
   const [isEnablingTribe, setIsEnablingTribe] = useState(false);
   const [tribeDiscoverable, setTribeDiscoverable] = useState<boolean | null>(null);
   const [consentDeclined, setConsentDeclined] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
   const [connectionRequests, setConnectionRequests] = useState<
     ConnectionRequest[]
   >([]);
@@ -1546,11 +1937,20 @@ export default function TribePage() {
     useState<GroupDraft>(initialGroupDraft);
   const [editingVoyageId, setEditingVoyageId] = useState("");
   const [groupError, setGroupError] = useState("");
+  const [groupCreateError, setGroupCreateError] = useState("");
   const [isGroupProfileError, setIsGroupProfileError] = useState(false);
   const [isGroupLoading, setIsGroupLoading] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [isSavingGroupEdit, setIsSavingGroupEdit] = useState(false);
   const [groupActionId, setGroupActionId] = useState("");
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(tribeModeStorageKey, mode);
+    } catch {
+      // Tab persistence is optional; keep the in-memory mode if storage is unavailable.
+    }
+  }, [mode]);
 
   const incomingRequestsByRequesterId = useMemo(() => {
     const requestsByUserId = new Map<string, ConnectionRequest>();
@@ -1631,8 +2031,10 @@ export default function TribePage() {
     }
   }, [fetchIncomingConnectionRequests, fetchOutgoingConnectionRequests]);
 
-  const loadGroups = useCallback(async () => {
-    setIsGroupLoading(true);
+  const loadGroups = useCallback(async (options?: { quiet?: boolean }) => {
+    if (!options?.quiet) {
+      setIsGroupLoading(true);
+    }
     setGroupError("");
     setIsGroupProfileError(false);
 
@@ -1659,7 +2061,9 @@ export default function TribePage() {
       setGroupError(getApiError(caughtError, "Unable to load group voyages."));
       setIsGroupProfileError(isIncompleteProfileError(caughtError));
     } finally {
-      setIsGroupLoading(false);
+      if (!options?.quiet) {
+        setIsGroupLoading(false);
+      }
     }
   }, []);
 
@@ -1672,13 +2076,16 @@ export default function TribePage() {
     );
   }, []);
 
-  const refreshGroupState = async (voyageId?: string) => {
-    await loadGroups();
+  const refreshGroupState = useCallback(async (
+    voyageId?: string,
+    options?: { quiet?: boolean },
+  ) => {
+    await loadGroups(options);
 
     if (voyageId) {
       setSelectedVoyage(await fetchGroupVoyage(voyageId));
     }
-  };
+  }, [fetchGroupVoyage, loadGroups]);
 
   const loadMatches = useCallback(async (options?: { useCachedMatches?: boolean }) => {
     setIsLoading(true);
@@ -1746,7 +2153,7 @@ export default function TribePage() {
 
   useEffect(() => {
     if (mode === "group") {
-      void Promise.resolve().then(loadGroups);
+      void Promise.resolve().then(() => loadGroups());
     }
   }, [loadGroups, mode]);
 
@@ -1786,7 +2193,7 @@ export default function TribePage() {
     }
   };
 
-  const refreshSoloState = async () => {
+  const refreshSoloState = useCallback(async () => {
     await loadConnectionRequests();
     const profileResponse = await fetchOwnProfile();
     const profileFingerprint = buildMatchProfileFingerprint(
@@ -1796,7 +2203,207 @@ export default function TribePage() {
 
     setMatches(nextMatches);
     writeCachedMatches(profileFingerprint, nextMatches);
-  };
+  }, [fetchMatches, fetchOwnProfile, loadConnectionRequests]);
+
+  const focusIncomingRequests = useCallback(async () => {
+    setMode("solo");
+
+    try {
+      await loadConnectionRequests();
+    } catch {
+      // The panel will keep its existing error state if a refresh fails.
+    }
+
+    window.setTimeout(() => {
+      incomingRequestsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }, [loadConnectionRequests]);
+
+  useEffect(() => {
+    const shouldFocusIncomingRequests = () => {
+      if (window.sessionStorage.getItem(tribeRequestFocusKey) === "1") {
+        window.sessionStorage.removeItem(tribeRequestFocusKey);
+        return true;
+      }
+
+      return (
+        new URLSearchParams(window.location.search).get("focus") ===
+        "incoming-requests"
+      );
+    };
+
+    const initialFocusId = window.setTimeout(() => {
+      if (shouldFocusIncomingRequests()) {
+        void focusIncomingRequests();
+      }
+    }, 0);
+
+    const handleFocusIncomingRequests = () => {
+      void focusIncomingRequests();
+    };
+
+    window.addEventListener(tribeIncomingFocusEvent, handleFocusIncomingRequests);
+
+    return () => {
+      window.clearTimeout(initialFocusId);
+      window.removeEventListener(
+        tribeIncomingFocusEvent,
+        handleFocusIncomingRequests,
+      );
+    };
+  }, [focusIncomingRequests]);
+
+  const focusGroupRequests = useCallback(async () => {
+    setMode("group");
+
+    try {
+      await loadGroups();
+    } catch {
+      // The Group Voyages view will keep its existing error state if refresh fails.
+    }
+
+    window.setTimeout(() => {
+      groupRequestsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }, [loadGroups]);
+
+  useEffect(() => {
+    const shouldFocusGroupRequests = () => {
+      if (window.sessionStorage.getItem(groupRequestFocusKey) === "1") {
+        window.sessionStorage.removeItem(groupRequestFocusKey);
+        return true;
+      }
+
+      const searchParams = new URLSearchParams(window.location.search);
+
+      return (
+        searchParams.get("mode") === "group" &&
+        searchParams.get("focus") === "creator-requests"
+      );
+    };
+
+    const initialFocusId = window.setTimeout(() => {
+      if (shouldFocusGroupRequests()) {
+        void focusGroupRequests();
+      }
+    }, 0);
+
+    const handleFocusGroupRequests = () => {
+      void focusGroupRequests();
+    };
+
+    window.addEventListener(groupIncomingFocusEvent, handleFocusGroupRequests);
+
+    return () => {
+      window.clearTimeout(initialFocusId);
+      window.removeEventListener(
+        groupIncomingFocusEvent,
+        handleFocusGroupRequests,
+      );
+    };
+  }, [focusGroupRequests]);
+
+  useEffect(() => {
+    if (mode !== "solo" || tribeDiscoverable !== true) {
+      return;
+    }
+
+    let isSyncing = false;
+    let isDisposed = false;
+
+    const syncSoloConnections = async () => {
+      if (isSyncing || isDisposed) {
+        return;
+      }
+
+      isSyncing = true;
+
+      try {
+        await refreshSoloState();
+      } catch {
+        // Keep the current visible state; explicit Refresh still reports errors.
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    const intervalId = window.setInterval(
+      syncSoloConnections,
+      soloConnectionSyncIntervalMs,
+    );
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void syncSoloConnections();
+      }
+    };
+    const handleRequestsChanged = () => {
+      void syncSoloConnections();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener(tribeRequestRefreshEvent, handleRequestsChanged);
+
+    return () => {
+      isDisposed = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(tribeRequestRefreshEvent, handleRequestsChanged);
+    };
+  }, [mode, tribeDiscoverable, refreshSoloState]);
+
+  useEffect(() => {
+    if (mode !== "group") {
+      return;
+    }
+
+    let isSyncing = false;
+    let isDisposed = false;
+
+    const syncGroupVoyages = async () => {
+      if (isSyncing || isDisposed) {
+        return;
+      }
+
+      isSyncing = true;
+
+      try {
+        await refreshGroupState(selectedVoyage?.id, { quiet: true });
+      } catch {
+        // Keep the current visible state; explicit Refresh still reports errors.
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    const intervalId = window.setInterval(
+      syncGroupVoyages,
+      groupVoyageSyncIntervalMs,
+    );
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void syncGroupVoyages();
+      }
+    };
+    const handleRequestsChanged = () => {
+      void syncGroupVoyages();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener(groupRequestRefreshEvent, handleRequestsChanged);
+
+    return () => {
+      isDisposed = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(groupRequestRefreshEvent, handleRequestsChanged);
+    };
+  }, [mode, refreshGroupState, selectedVoyage?.id]);
 
   const handleConnect = async (targetUserId: string) => {
     setConnectionActionId(targetUserId);
@@ -1811,6 +2418,7 @@ export default function TribePage() {
         body: JSON.stringify({ target_user_id: targetUserId }),
       });
       await refreshSoloState();
+      notifyTribeRequestsChanged();
     } catch (caughtError) {
       setError(getApiError(caughtError, "Unable to send connection request."));
     } finally {
@@ -1838,6 +2446,7 @@ export default function TribePage() {
         { method: "PATCH", token },
       );
       await refreshSoloState();
+      notifyTribeRequestsChanged();
     } catch (caughtError) {
       setError(getApiError(caughtError, "Unable to update connection request."));
     } finally {
@@ -1864,6 +2473,7 @@ export default function TribePage() {
         { method: "PATCH", token },
       );
       await refreshSoloState();
+      notifyTribeRequestsChanged();
     } catch (caughtError) {
       setError(getApiError(caughtError, "Unable to cancel connection request."));
     } finally {
@@ -1904,8 +2514,34 @@ export default function TribePage() {
   };
 
   const handleCreateGroup = async () => {
+    const hasRequiredFields =
+      groupDraft.title.trim() &&
+      groupDraft.destination.trim() &&
+      groupDraft.start_date &&
+      groupDraft.description.trim();
+
+    if (!hasRequiredFields) {
+      setGroupCreateError(
+        "Please complete the required voyage details before creating this Group Voyage.",
+      );
+      setGroupError("");
+      setIsGroupProfileError(false);
+      return;
+    }
+
+    if (
+      groupDraft.max_participants !== "" &&
+      groupDraft.max_participants < 3
+    ) {
+      setGroupCreateError("Group Voyages must allow at least 3 travellers.");
+      setGroupError("");
+      setIsGroupProfileError(false);
+      return;
+    }
+
     setIsCreatingGroup(true);
     setGroupError("");
+    setGroupCreateError("");
     setIsGroupProfileError(false);
 
     try {
@@ -1921,7 +2557,10 @@ export default function TribePage() {
           description: groupDraft.description || null,
           tags: normalizeTags(groupDraft.tags),
           budget_range: groupDraft.budget_range || null,
-          max_participants: groupDraft.max_participants,
+          max_participants:
+            groupDraft.max_participants === ""
+              ? initialGroupDraft.max_participants || 8
+              : groupDraft.max_participants,
           visibility: groupDraft.visibility,
         }),
       });
@@ -1929,7 +2568,12 @@ export default function TribePage() {
       setSelectedVoyage(createdVoyage);
       await refreshGroupState(createdVoyage.id);
     } catch (caughtError) {
-      setGroupError(getApiError(caughtError, "Unable to create group voyage."));
+      setGroupCreateError(
+        getApiError(
+          caughtError,
+          "We could not create this Group Voyage. Please review the details and try again.",
+        ),
+      );
       setIsGroupProfileError(isIncompleteProfileError(caughtError));
     } finally {
       setIsCreatingGroup(false);
@@ -1937,6 +2581,13 @@ export default function TribePage() {
   };
 
   const handleViewVoyage = async (voyageId: string) => {
+    if (selectedVoyage?.id === voyageId) {
+      setSelectedVoyage(null);
+      setEditingVoyageId("");
+      setGroupEditDraft(initialGroupDraft);
+      return;
+    }
+
     setGroupActionId(voyageId);
     setGroupError("");
     setIsGroupProfileError(false);
@@ -2097,6 +2748,7 @@ export default function TribePage() {
         { method: "POST", token },
       );
       await refreshGroupState(selectedVoyage?.id === voyageId ? voyageId : undefined);
+      notifyGroupRequestsChanged();
     } catch (caughtError) {
       setGroupError(getApiError(caughtError, "Unable to request to join."));
       setIsGroupProfileError(isIncompleteProfileError(caughtError));
@@ -2125,6 +2777,7 @@ export default function TribePage() {
         { method: "PATCH", token },
       );
       await refreshGroupState(voyage.id);
+      notifyGroupRequestsChanged();
     } catch (caughtError) {
       setGroupError(getApiError(caughtError, "Unable to cancel join request."));
       setIsGroupProfileError(isIncompleteProfileError(caughtError));
@@ -2150,6 +2803,7 @@ export default function TribePage() {
         { method: "PATCH", token },
       );
       await refreshGroupState(selectedVoyage?.id);
+      notifyGroupRequestsChanged();
     } catch (caughtError) {
       setGroupError(getApiError(caughtError, "Unable to update join request."));
       setIsGroupProfileError(isIncompleteProfileError(caughtError));
@@ -2160,260 +2814,98 @@ export default function TribePage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-[#050505] text-[#f8f4ea]">
+      <div className="min-h-screen bg-[#050505] text-[#f8f4ea] selection:bg-white/25 selection:text-white">
         <Navbar />
         <main className="bg-[#050505]">
-          <section className="relative grid min-h-[78vh] place-items-center overflow-hidden px-5 text-center sm:px-8">
+          <section className="relative min-h-[calc(100vh-5rem)] overflow-hidden px-5 sm:px-8">
             <Image
               priority
-              alt="Friends gathered around a warm evening campfire"
-              className="absolute inset-0 h-full w-full object-cover"
+              alt="Warm sunset over mountain islands for a shared travel journey"
+              className="absolute inset-0 h-full w-full object-cover object-center"
               fill
               sizes="100vw"
               src={heroImage}
             />
-            <div className="absolute inset-0 bg-black/70" />
-            <div className="absolute inset-0 bg-[#2d2114]/15" />
-            <div className="relative z-10 mx-auto max-w-5xl pt-16">
-              <p className="mb-5 text-xs font-medium uppercase tracking-[0.42em] text-[#f8f4ea]/62">
-                FIND YOUR TRIBE
-              </p>
-              <h1 className="font-serif text-2xl leading-[1.08] text-white sm:text-4xl lg:text-5xl">
-                Meet the people who make your kind of journey better.
-              </h1>
-              <p className="mx-auto mt-7 max-w-2xl text-base leading-8 text-white/70 sm:text-lg">
-                Connect with compatible travelers through shared destinations,
-                dates, interests, and travel styles.
-              </p>
-            </div>
-            <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-white/45">
-              <span className="text-[10px] uppercase tracking-[0.32em]">
-                Scroll
-              </span>
-              <span className="h-10 w-px overflow-hidden bg-white/16">
-                <span className="block h-4 w-px animate-pulse bg-[#f8f4ea]" />
-              </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/74 via-black/0 to-black/24" />
+            <div className="absolute inset-0 bg-[#2b1b12]/8" />
+
+            <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl flex-col justify-end pb-28 pt-20">
+              <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-end">
+                <div className="max-w-2xl">
+                  <p className="mb-5 text-xs font-medium uppercase tracking-[0.42em] text-[#f8f4ea]/64">
+                    FIND YOUR TRIBE
+                  </p>
+                  <div className="mb-8 h-px w-36 bg-white/35" />
+                  <h1 className="font-serif text-5xl leading-[0.98] text-white sm:text-6xl lg:text-7xl">
+                    Journeys are
+                    <br />
+                    better together.
+                  </h1>
+                  <p className="mt-6 max-w-xl text-base leading-8 text-white/82 sm:text-lg">
+                    Meet people who share your kind of travel. Real
+                    connections. Meaningful experiences.
+                    <br />
+                    A more human way to explore.
+                  </p>
+                  <Link
+                    className="mt-7 inline-flex items-center rounded-full border border-white/14 bg-[#f8f4ea] px-8 py-3 text-sm font-semibold text-black transition duration-300 hover:bg-white"
+                    href="/profile"
+                  >
+                    View Profile
+                  </Link>
+                </div>
+
+                <div className="flex flex-col items-start gap-16 lg:items-end">
+                  <p
+                    className="hidden max-w-[190px] rotate-[-8deg] text-right text-5xl font-light leading-[0.82] text-white/82 lg:block"
+                    style={{
+                      fontFamily:
+                        '"Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive',
+                      fontWeight: 300,
+                    }}
+                  >
+                    <em className="block italic">Same</em>
+                    <em className="block italic">Places</em>
+                    <em className="block italic">Bigger</em>
+                    <em className="block italic">Stories</em>
+                  </p>
+                  <div className="flex w-full max-w-3xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+                    {[
+                      { icon: UsersRound, label: "Like-minded travellers" },
+                      { icon: Compass, label: "Shared adventures" },
+                      { icon: Heart, label: "Real connections" },
+                    ].map(({ icon: Icon, label }, index) => (
+                      <div
+                        className="flex items-center gap-4 text-base font-semibold leading-6 text-white"
+                        key={label}
+                      >
+                        {index > 0 ? (
+                          <span className="hidden h-12 w-px bg-white/32 sm:block" />
+                        ) : null}
+                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/72 bg-black/8">
+                          <Icon className="h-7 w-7 text-white" />
+                        </span>
+                        <span className="max-w-28">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
           <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
-            <div className="flex flex-col gap-5 border-y border-white/10 py-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.36em] text-white/42">
-                  Choose your path
-                </p>
-                <h2 className="mt-3 font-serif text-3xl leading-tight text-white sm:text-4xl">
-                  Solo matches or open group voyages.
-                </h2>
-              </div>
+            <div className="flex justify-center py-6">
               <ModeToggle mode={mode} onChange={setMode} />
             </div>
           </section>
-
-          <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-            <div className="relative overflow-hidden border border-white/10 bg-[#0b0b0b] p-6 sm:p-8 lg:p-10">
-              <div className="pointer-events-none absolute inset-0 opacity-40">
-                <div className="absolute left-12 top-12 h-px w-32 bg-[#f8f4ea]/20" />
-                <div className="absolute bottom-16 right-16 h-px w-44 bg-white/10" />
-                <div className="absolute right-8 top-10 h-24 w-px bg-white/10" />
-              </div>
-
-              <div className="relative z-10 text-center">
-                <p className="text-xs font-medium uppercase tracking-[0.42em] text-white/42">
-                  HOW WE MATCH
-                </p>
-                <h2 className="mx-auto mt-4 max-w-3xl font-serif text-5xl leading-tight text-white sm:text-6xl">
-                  Similar minds. Shared journeys.
-                </h2>
-              </div>
-
-              <div className="relative z-10 mt-12 grid gap-8 lg:grid-cols-[0.94fr_1.06fr] lg:items-center">
-                <div className="group relative mx-auto aspect-[4/5] w-full max-w-[520px] overflow-hidden border border-white/12 bg-white/[0.03]">
-                  <Image
-                    alt="Traveler exploring a cinematic local street"
-                    className="h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.035]"
-                    fill
-                    sizes="(min-width: 1024px) 40vw, 100vw"
-                    src={matchingJourneyImage}
-                  />
-                  <div className="absolute inset-0 bg-black/20" />
-                  <div className="absolute bottom-5 left-5 right-5 border border-white/10 bg-black/55 p-4 backdrop-blur-sm">
-                    <p className="text-xs uppercase tracking-[0.28em] text-white/42">
-                      Your profile
-                    </p>
-                    <p className="mt-2 font-serif text-2xl leading-tight text-white">
-                      Plans, preferences, rhythm, and personality.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="relative min-h-[560px] lg:min-h-[620px]">
-                  <svg
-                    aria-hidden="true"
-                    className="absolute inset-0 hidden h-full w-full lg:block"
-                    preserveAspectRatio="none"
-                    viewBox="0 0 620 620"
-                  >
-                    {[
-                      "M18 286 C150 160 258 82 470 88",
-                      "M22 302 C198 276 304 232 548 218",
-                      "M22 318 C192 340 300 342 486 330",
-                      "M20 334 C182 410 304 470 546 494",
-                      "M16 350 C126 500 244 548 430 568",
-                    ].map((path, index) => (
-                      <path
-                        className={`transition duration-300 ${
-                          activeStep === index
-                            ? "stroke-[#f8f4ea]"
-                            : "stroke-white/16"
-                        }`}
-                        d={path}
-                        fill="none"
-                        key={path}
-                        strokeDasharray="4 10"
-                        strokeWidth={activeStep === index ? 1.4 : 1}
-                      />
-                    ))}
-                  </svg>
-
-                  <div className="absolute left-0 top-1/2 hidden h-5 w-5 -translate-y-1/2 rounded-full border border-[#f8f4ea]/50 bg-[#f8f4ea]/20 shadow-sm shadow-[#f8f4ea]/20 lg:block" />
-
-                  <div className="relative grid gap-4 lg:block lg:min-h-[620px]">
-                    {matchSteps.map((step, index) => {
-                      const isActive = activeStep === index;
-                      const nodePositions = [
-                        "lg:absolute lg:right-16 lg:top-0 lg:w-72",
-                        "lg:absolute lg:right-0 lg:top-32 lg:w-72",
-                        "lg:absolute lg:right-20 lg:top-64 lg:w-72",
-                        "lg:absolute lg:right-0 lg:top-96 lg:w-72",
-                        "lg:absolute lg:bottom-0 lg:right-28 lg:w-72",
-                      ];
-
-                      return (
-                        <button
-                          className={`group text-left transition duration-300 ${nodePositions[index]} ${
-                            isActive ? "translate-x-0" : "hover:translate-x-1"
-                          }`}
-                          key={step.number}
-                          type="button"
-                          onClick={() => setActiveStep(index)}
-                          onFocus={() => setActiveStep(index)}
-                          onMouseEnter={() => setActiveStep(index)}
-                        >
-                          <span className="flex items-start gap-4 border border-white/10 bg-black/40 p-4 backdrop-blur-sm transition duration-300 group-hover:border-[#f8f4ea]/30 group-hover:bg-white/[0.055]">
-                            <span
-                              className={`mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border font-serif text-sm transition duration-300 ${
-                                isActive
-                                  ? "border-[#f8f4ea] bg-[#f8f4ea] text-black"
-                                  : "border-white/16 bg-white/[0.04] text-white/60 group-hover:text-white"
-                              }`}
-                            >
-                              {step.number}
-                            </span>
-                            <span>
-                              <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-white">
-                                {step.title}
-                              </span>
-                              <span className="mt-2 block text-sm leading-6 text-white/62">
-                                {step.description}
-                              </span>
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <p className="relative z-10 mx-auto mt-10 max-w-2xl border-t border-white/10 pt-6 text-center font-serif text-2xl leading-tight text-white/82">
-                From shared plans to shared rhythm, every match starts with
-                compatibility.
-              </p>
-            </div>
-          </section>
-
-          {mode === "group" ? (
-          <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
-            <div className="group relative min-h-[560px] overflow-hidden border border-white/10 bg-black">
-              <Image
-                alt="Friends gathered together at sunset"
-                className="h-full w-full object-cover opacity-80 transition duration-700 group-hover:scale-[1.025]"
-                fill
-                sizes="100vw"
-                src={groupTravelImage}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/20" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/25" />
-
-              <div className="relative z-10 grid min-h-[560px] gap-8 p-6 sm:p-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:p-14">
-                <div className="max-w-xl">
-                  <p className="text-xs font-medium uppercase tracking-[0.38em] text-[#f8f4ea]/58">
-                    GROUP VOYAGES
-                  </p>
-                  <h2 className="mt-5 font-serif text-5xl leading-tight text-white sm:text-6xl">
-                    Maybe your next journey needs a few more people.
-                  </h2>
-                  <p className="mt-6 text-base leading-8 text-white/68">
-                    Find compatible travelers beyond one-to-one matches. Create
-                    a real voyage, discover open trips, and request to join.
-                  </p>
-                </div>
-
-                <div className="justify-self-start lg:justify-self-end">
-                  <div className="w-full max-w-sm border border-white/14 bg-black/58 p-5 backdrop-blur-md">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-xs font-medium uppercase tracking-[0.3em] text-white/46">
-                        GROUP VOYAGE
-                      </p>
-                      <span className="border border-[#f8f4ea]/28 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-[#f8f4ea]/78">
-                        Live
-                      </span>
-                    </div>
-                    <h3 className="mt-5 font-serif text-3xl leading-tight text-white">
-                      Tokyo, Japan · Dec 14 to 20
-                    </h3>
-                    <p className="mt-2 text-sm text-white/58">
-                      Request access from each voyage creator
-                    </p>
-                    <div className="mt-6 flex -space-x-3">
-                      {["A", "M", "R", "K", "N", "+"].map((initial) => (
-                        <span
-                          className="grid h-11 w-11 place-items-center rounded-full border border-white/16 bg-[#f8f4ea] font-serif text-sm text-black"
-                          key={initial}
-                        >
-                          {initial}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-6 border-t border-white/10 pt-5">
-                      <p className="text-xs uppercase tracking-[0.24em] text-white/40">
-                        Real join flow
-                      </p>
-                      <button
-                        className="mt-4 w-full border border-white/14 bg-[#f8f4ea] px-4 py-3 text-xs font-medium uppercase tracking-[0.22em] text-black transition hover:bg-white"
-                        type="button"
-                        onClick={() => {
-                          document
-                            .getElementById("group-voyages")
-                            ?.scrollIntoView({ behavior: "smooth" });
-                        }}
-                      >
-                        Explore Group Voyages
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-          ) : null}
 
           <section
             className="mx-auto max-w-7xl px-5 pb-24 sm:px-8"
             id="group-voyages"
           >
-            <div className="flex flex-col gap-6 border-y border-white/10 py-8 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-6 py-8 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.38em] text-white/42">
                   <Sparkles className="h-4 w-4" />
@@ -2452,26 +2944,26 @@ export default function TribePage() {
                     {isLoading ? "Loading..." : "Refresh Matches"}
                   </Button>
                 </div>
-              ) : (
-                <ModeToggle mode={mode} onChange={setMode} />
-              )}
+              ) : null}
             </div>
 
             {mode === "solo" ? (
               <>
             {tribeDiscoverable === true ? (
-              <IncomingRequestsPanel
-                actionId={connectionActionId}
-                error={incomingError}
-                isLoading={isIncomingLoading}
-                requests={connectionRequests}
-                onAccept={(request) =>
-                  handleConnectionDecision(request, "accept")
-                }
-                onDecline={(request) =>
-                  handleConnectionDecision(request, "decline")
-                }
-              />
+              <div id="incoming-requests" ref={incomingRequestsRef}>
+                <IncomingRequestsPanel
+                  actionId={connectionActionId}
+                  error={incomingError}
+                  isLoading={isIncomingLoading}
+                  requests={connectionRequests}
+                  onAccept={(request) =>
+                    handleConnectionDecision(request, "accept")
+                  }
+                  onDecline={(request) =>
+                    handleConnectionDecision(request, "decline")
+                  }
+                />
+              </div>
             ) : null}
 
             {error ? (
@@ -2629,18 +3121,6 @@ export default function TribePage() {
                     </p>
 
                     <dl className="mt-6 space-y-5">
-                      <MatchDetail label="Travel Dates">
-                        <span className="inline-flex items-center gap-2">
-                          <CalendarDays className="h-4 w-4 text-white/40" />
-                          {formatTravelDates(
-                            profile.available_from,
-                            profile.available_to,
-                          )}
-                        </span>
-                      </MatchDetail>
-                      <MatchDetail label="Preferred Destinations">
-                        <TagList values={profile.preferred_destinations} />
-                      </MatchDetail>
                       <MatchDetail label="Why You Match">
                         {match.factors?.length ? (
                           <ul className="space-y-2">
@@ -2667,9 +3147,6 @@ export default function TribePage() {
                             Compatibility is based on your saved travel profile.
                           </span>
                         )}
-                        <p className="mt-4 border-t border-white/10 pt-4 font-serif text-xl leading-7 text-white/82">
-                          &quot;{match.explanation || match.reason}&quot;
-                        </p>
                       </MatchDetail>
                     </dl>
 
@@ -2724,6 +3201,8 @@ export default function TribePage() {
             ) : (
               <GroupVoyagesView
                 actionId={groupActionId}
+                createError={groupCreateError}
+                creatorRequestsRef={groupRequestsRef}
                 draft={groupDraft}
                 editDraft={groupEditDraft}
                 editingVoyageId={editingVoyageId}
@@ -2739,7 +3218,10 @@ export default function TribePage() {
                 onCancelEdit={handleCancelGroupEdit}
                 onCloseVoyage={handleCloseGroup}
                 onCreate={handleCreateGroup}
-                onDraftChange={setGroupDraft}
+                onDraftChange={(draft) => {
+                  setGroupDraft(draft);
+                  setGroupCreateError("");
+                }}
                 onEditDraftChange={setGroupEditDraft}
                 onJoinDecision={handleJoinDecision}
                 onLeaveVoyage={handleLeaveGroup}

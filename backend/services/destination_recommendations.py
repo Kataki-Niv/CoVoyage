@@ -498,12 +498,16 @@ def search_supported_destinations(query: str) -> dict[str, Any]:
         for slug, country in countries.items()
         if normalized_query in slug.lower()
         or normalized_query in str(country.get("name", "")).lower()
+        or normalized_query in str(country.get("region", "")).lower()
     ]
     matched_places = []
 
     for country_slug, places in places_by_country.items():
         for place in places:
-            if normalized_query in str(place.get("name", "")).lower():
+            if (
+                normalized_query in str(place.get("name", "")).lower()
+                or normalized_query in str(place.get("region", "")).lower()
+            ):
                 matched_places.append(place)
 
     matched_countries.sort(key=lambda country: country.get("name", ""))

@@ -70,7 +70,7 @@ export function Footer() {
 
         <div className="mt-32 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-medium text-white/52">
-            ÂCopyright CoVoyage. All rights reserved
+            Copyright CoVoyage. All rights reserved
           </p>
 
           <div className="flex items-center gap-8 text-white/62">

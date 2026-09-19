@@ -80,6 +80,12 @@ def get_backpack_items_or_503():
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
+    if not SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication configuration is unavailable",
+        )
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

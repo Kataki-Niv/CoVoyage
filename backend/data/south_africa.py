@@ -95,7 +95,7 @@ def get_south_africa_seed_dataset():
                 ["road-trip", "coast", "nature", "walking", "wildlife"],
                 ["Road trips", "Coastal walks", "Photography", "Markets", "Nature"],
                 SOUTH_AFRICA_SOURCE,
-                "https://images.unsplash.com/photo-1566396549069-437b5c098dd9?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=84",
             ),
             place(
                 "stellenbosch-winelands",
@@ -111,7 +111,7 @@ def get_south_africa_seed_dataset():
                 ["wine", "food", "heritage", "slow-travel", "mountains"],
                 ["Wine routes", "Food", "Markets", "Photography", "Walking"],
                 SOUTH_AFRICA_SOURCE,
-                "https://images.unsplash.com/photo-1591785636095-c6740fdc6b7b?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=84",
             ),
             place(
                 "johannesburg",

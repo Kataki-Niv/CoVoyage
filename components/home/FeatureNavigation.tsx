@@ -4,7 +4,7 @@ import { DecorativeElement } from "@/components/home/DecorativeElements";
 
 const chapters = [
   { number: "01", label: "Find Your Tribe", href: "#tribe" },
-  { number: "02", label: "Explore Local Vibe", href: "#vibe" },
+  { number: "02", label: "Explore Local Vibe", href: "#master-local-vibe" },
   { number: "03", label: "CoVoyage Journal", href: "#journal" },
 ];
 

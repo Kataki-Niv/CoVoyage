@@ -1,12 +1,18 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { clearAuth, isAuthenticated, onAuthChange } from "@/lib/api";
+import {
+  apiRequest,
+  clearAuth,
+  getValidAuthToken,
+  isAuthenticated,
+  onAuthChange,
+} from "@/lib/api";
 
 const navItems = [
   { label: "How It Works", href: "/how-it-works" },
@@ -15,24 +21,168 @@ const navItems = [
   { label: "Profile", href: "/profile" },
 ];
 
+const TRIBE_REQUEST_REFRESH_EVENT = "covoyage-tribe-requests-change";
+const TRIBE_REQUEST_FOCUS_KEY = "covoyage_focus_incoming_requests";
+const GROUP_REQUEST_REFRESH_EVENT = "covoyage-group-requests-change";
+const GROUP_REQUEST_FOCUS_KEY = "covoyage_focus_group_requests";
+const TRIBE_REQUEST_POLL_MS = 15000;
+
+type TribeRequestProfile = {
+  name?: string;
+  username?: string;
+};
+
+type TribeConnectionRequestNotice = {
+  id: string;
+  requester_profile?: TribeRequestProfile | null;
+  other_profile?: TribeRequestProfile | null;
+};
+
+type GroupJoinRequestNotice = {
+  id: string;
+  requester_profile?: TribeRequestProfile | null;
+  voyage?: {
+    title?: string | null;
+    destination?: string | null;
+  } | null;
+};
+
+function getRequesterName(request: TribeConnectionRequestNotice | null) {
+  const profile = request?.requester_profile || request?.other_profile;
+
+  return profile?.name || profile?.username || "Someone";
+}
+
+function getGroupRequesterName(request: GroupJoinRequestNotice | null) {
+  const profile = request?.requester_profile;
+
+  return profile?.name || profile?.username || "Someone";
+}
+
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [hasToken, setHasToken] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [incomingTribeRequests, setIncomingTribeRequests] = useState<
+    TribeConnectionRequestNotice[]
+  >([]);
+  const [incomingGroupJoinRequests, setIncomingGroupJoinRequests] = useState<
+    GroupJoinRequestNotice[]
+  >([]);
   const brandHref =
     pathname?.startsWith("/explore/") ? "/explore" : "/";
   const isHomePage = pathname === "/";
+  const latestIncomingRequest = incomingTribeRequests[0] || null;
+  const latestGroupJoinRequest = incomingGroupJoinRequests[0] || null;
+  const notificationCount =
+    incomingTribeRequests.length + incomingGroupJoinRequests.length;
+  const activeNotification = latestGroupJoinRequest
+    ? {
+        href: "/tribe?mode=group&focus=creator-requests",
+        kind: "group" as const,
+        label: `${getGroupRequesterName(latestGroupJoinRequest)} requested ${
+          latestGroupJoinRequest.voyage?.title || "your voyage"
+        }`,
+        title: `${getGroupRequesterName(latestGroupJoinRequest)} requested to join your ${
+          latestGroupJoinRequest.voyage?.title || "Group Voyage"
+        }.`,
+      }
+    : latestIncomingRequest
+      ? {
+          href: "/tribe?focus=incoming-requests",
+          kind: "tribe" as const,
+          label: `${getRequesterName(latestIncomingRequest)} sent a request`,
+          title: `${getRequesterName(latestIncomingRequest)} sent you a connection request.`,
+        }
+      : null;
 
   useEffect(() => {
     const syncAuthState = () => {
-      setHasToken(isAuthenticated());
+      const authenticated = isAuthenticated();
+
+      setHasToken(authenticated);
+
+      if (!authenticated) {
+        setIncomingTribeRequests([]);
+        setIncomingGroupJoinRequests([]);
+      }
     };
 
     syncAuthState();
     return onAuthChange(syncAuthState);
   }, []);
+
+  const refreshIncomingRequests = useCallback(async () => {
+    const token = getValidAuthToken();
+
+    if (!token) {
+      setIncomingTribeRequests([]);
+      setIncomingGroupJoinRequests([]);
+      return;
+    }
+
+    const [tribeRequests, groupRequests] = await Promise.all([
+      apiRequest<TribeConnectionRequestNotice[]>(
+        "/connections/requests/incoming",
+        { token },
+      ).catch(() => []),
+      apiRequest<GroupJoinRequestNotice[]>(
+        "/group-voyages/requests/incoming",
+        { token },
+      ).catch(() => []),
+    ]);
+
+    setIncomingTribeRequests(tribeRequests);
+    setIncomingGroupJoinRequests(groupRequests);
+  }, []);
+
+  const refreshIncomingRequestsSafely = useCallback(async () => {
+    try {
+      await refreshIncomingRequests();
+    } catch {
+      setIncomingTribeRequests([]);
+      setIncomingGroupJoinRequests([]);
+    }
+  }, [refreshIncomingRequests]);
+
+  useEffect(() => {
+    if (!hasToken) {
+      return;
+    }
+
+    const initialRefreshId = window.setTimeout(() => {
+      void refreshIncomingRequestsSafely();
+    }, 0);
+
+    const intervalId = window.setInterval(
+      refreshIncomingRequestsSafely,
+      TRIBE_REQUEST_POLL_MS,
+    );
+    const handleFocus = () => {
+      void refreshIncomingRequestsSafely();
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void refreshIncomingRequestsSafely();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener(TRIBE_REQUEST_REFRESH_EVENT, handleFocus);
+    window.addEventListener(GROUP_REQUEST_REFRESH_EVENT, handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(initialRefreshId);
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener(TRIBE_REQUEST_REFRESH_EVENT, handleFocus);
+      window.removeEventListener(GROUP_REQUEST_REFRESH_EVENT, handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [hasToken, refreshIncomingRequestsSafely]);
 
   useEffect(() => {
     if (!isHomePage) {
@@ -62,6 +212,24 @@ export function Navbar() {
 
     if (pathname === "/profile") {
       window.location.reload();
+    }
+  };
+
+  const handleNotificationClick = (kind: "tribe" | "group") => {
+    window.sessionStorage.setItem(
+      kind === "group" ? GROUP_REQUEST_FOCUS_KEY : TRIBE_REQUEST_FOCUS_KEY,
+      "1",
+    );
+    setIsMenuOpen(false);
+
+    if (pathname === "/tribe") {
+      window.dispatchEvent(
+        new Event(
+          kind === "group"
+            ? "covoyage-focus-group-requests"
+            : "covoyage-focus-incoming-requests",
+        ),
+      );
     }
   };
 
@@ -96,13 +264,29 @@ export function Navbar() {
 
         <div className="hidden items-center gap-6 md:flex">
           {hasToken ? (
-            <button
-              className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
-              type="button"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
+            <>
+              {activeNotification ? (
+                <Link
+                  className="inline-flex max-w-[18rem] items-center gap-2 border border-[#f8f4ea]/24 bg-[#f8f4ea]/10 px-3 py-2 text-xs font-medium text-[#f8f4ea] transition-colors hover:bg-[#f8f4ea]/16"
+                  href={activeNotification.href}
+                  title={activeNotification.title}
+                  onClick={() => handleNotificationClick(activeNotification.kind)}
+                >
+                  <Bell className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{activeNotification.label}</span>
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#f8f4ea] px-1.5 text-[10px] font-semibold leading-none text-black">
+                    {notificationCount}
+                  </span>
+                </Link>
+              ) : null}
+              <button
+                className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                type="button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <>
               <Link
@@ -152,13 +336,31 @@ export function Navbar() {
             ))}
             <div className="flex gap-6 pt-2">
               {hasToken ? (
-                <button
-                  className="text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
-                  type="button"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </button>
+                <div className="grid gap-4">
+                  {activeNotification ? (
+                    <Link
+                      className="inline-flex w-fit items-center gap-2 border border-[#f8f4ea]/24 bg-[#f8f4ea]/10 px-3 py-2 text-xs font-medium text-[#f8f4ea] transition-colors hover:bg-[#f8f4ea]/16"
+                      href={activeNotification.href}
+                      title={activeNotification.title}
+                      onClick={() =>
+                        handleNotificationClick(activeNotification.kind)
+                      }
+                    >
+                      <Bell className="h-4 w-4 shrink-0" />
+                      <span>{activeNotification.label}</span>
+                      <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#f8f4ea] px-1.5 text-[10px] font-semibold leading-none text-black">
+                        {notificationCount}
+                      </span>
+                    </Link>
+                  ) : null}
+                  <button
+                    className="w-fit text-xs font-medium uppercase tracking-[0.22em] text-white transition-colors hover:text-white/80"
+                    type="button"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
+                </div>
               ) : (
                 <>
                   <Link

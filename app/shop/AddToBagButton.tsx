@@ -26,7 +26,7 @@ export function AddToBagButton({ productSlug }: { productSlug: string }) {
 
     try {
       await addBackpackItem(productSlug, token);
-      setMessage("Added to bag");
+      setMessage("Saved to planning bag");
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError
@@ -46,13 +46,13 @@ export function AddToBagButton({ productSlug }: { productSlug: string }) {
         onClick={handleAddToBag}
         type="button"
       >
-        {isAdding ? "Adding..." : "Add to Bag"}
+        {isAdding ? "Saving..." : "Save to Bag"}
       </button>
       {message ? (
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-white/54">
           <p>{message}</p>
           <Link className="text-white underline-offset-4 hover:underline" href="/essentials/bag">
-            View bag
+            View planning bag
           </Link>
         </div>
       ) : null}

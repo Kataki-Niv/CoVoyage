@@ -55,7 +55,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                 className="mt-7 inline-flex h-11 items-center justify-center border border-[#f8f4ea]/70 bg-[#f8f4ea] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[#050505] transition-colors hover:border-white hover:bg-white"
                 href="/essentials/bag"
               >
-                View Essentials Bag
+                View Planning Bag
               </Link>
             </div>
             <figure className="relative min-h-[420px] overflow-hidden border border-white/10 bg-[#151515] lg:min-h-[540px]">

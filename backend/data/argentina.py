@@ -74,7 +74,7 @@ def get_argentina_seed_dataset():
                 ["wine", "food", "mountains", "slow-travel", "outdoors"],
                 ["Wine routes", "Food", "Cycling", "Mountain drives", "Markets"],
                 ARGENTINA_SOURCE,
-                "https://images.unsplash.com/photo-1605217613423-0f61d8d17f17?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=900&q=84",
             ),
             place(
                 "bariloche",
@@ -90,7 +90,7 @@ def get_argentina_seed_dataset():
                 ["mountains", "lakes", "hiking", "food", "road-trip"],
                 ["Hiking", "Road trips", "Photography", "Food", "Lake walks"],
                 ARGENTINA_SOURCE,
-                "https://images.unsplash.com/photo-1627310557572-68c1c2d78d62?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1691712988368-ab9cb6cd6ef3?auto=format&fit=crop&w=900&q=84",
             ),
             place(
                 "iguazu-falls",
@@ -106,7 +106,7 @@ def get_argentina_seed_dataset():
                 ["nature", "waterfalls", "rainforest", "photography", "walking"],
                 ["Walking", "Photography", "Wildlife", "Nature", "Viewpoints"],
                 ARGENTINA_SOURCE,
-                "https://images.unsplash.com/photo-1589473888263-b910e548ee52?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=900&q=84",
             ),
             place(
                 "el-calafate",
@@ -122,7 +122,7 @@ def get_argentina_seed_dataset():
                 ["patagonia", "nature", "glaciers", "photography", "outdoors"],
                 ["Photography", "Boat trips", "Walking", "Nature", "Scenic drives"],
                 ARGENTINA_SOURCE,
-                "https://images.unsplash.com/photo-1516651029879-bcd191e1ce6b?auto=format&fit=crop&w=900&q=84",
+                "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=84",
             ),
         ],
         weather_summary=(

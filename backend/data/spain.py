@@ -132,7 +132,7 @@ SPAIN_COUNTRY = {
         {
             "title": "Food and social rhythm",
             "body": (
-                "Food culture is central to travel in Spain, from tapas and markets to late dinners, cafÃ©s, "
+                "Food culture is central to travel in Spain, from tapas and markets to late dinners, cafés, "
                 "seafood, regional wines, olive oil, and local festivals."
             ),
             "sources": [SPAIN_INFO_ABOUT, SPAIN_SEVILLE],
@@ -289,6 +289,20 @@ SPAIN_COUNTRY = {
             "usage_note": "Helpful for rail, metro, and bus travel.",
             "sources": [SPAIN_INFO, SPAIN_INFO_ABOUT],
         },
+        {
+            "english": "Yes",
+            "local": "Sí",
+            "pronunciation": "see",
+            "usage_note": "Simple confirmation in cafes, shops, and transport settings.",
+            "sources": [SPAIN_INFO_ABOUT],
+        },
+        {
+            "english": "No",
+            "local": "No",
+            "pronunciation": "noh",
+            "usage_note": "Useful for direct, polite responses.",
+            "sources": [SPAIN_INFO_ABOUT],
+        },
     ],
     "practical_notes": [
         {
@@ -334,7 +348,7 @@ SPAIN_PLACES = [
             "neighborhood walks, food, art, and Catalan identity."
         ),
         "description": (
-            "A major city destination known for GaudÃ­ architecture, seaside districts, museums, markets, "
+            "A major city destination known for Gaudí architecture, seaside districts, museums, markets, "
             "urban beaches, and layered neighborhoods."
         ),
         "media": [
@@ -386,7 +400,7 @@ SPAIN_PLACES = [
         "type": "Historic city and Andalusian culture destination",
         "story": (
             "Seville is a historic Andalusian city of orange-tree courtyards, flamenco, tapas, ceramics, "
-            "the Cathedral, La Giralda, Triana, and the Real AlcÃ¡zar."
+            "the Cathedral, La Giralda, Triana, and the Real Alcázar."
         ),
         "description": (
             "A southern Spanish city known for monumental architecture, flamenco culture, tapas, plazas, "
@@ -404,7 +418,7 @@ SPAIN_PLACES = [
             "and evening street life."
         ),
         "time_required": "2-4 days",
-        "highlights": ["Cathedral and Giralda", "Real AlcÃ¡zar", "Triana", "Tapas", "Flamenco"],
+        "highlights": ["Cathedral and Giralda", "Real Alcázar", "Triana", "Tapas", "Flamenco"],
         "tags": ["culture", "history", "food", "flamenco", "architecture"],
         "activities": ["Historic sites", "Tapas", "Flamenco", "Walking", "Museums"],
         "local_experience": (

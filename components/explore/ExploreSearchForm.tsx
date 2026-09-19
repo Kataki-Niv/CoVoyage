@@ -4,13 +4,18 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
-import { searchDestinations, type BackendCountry } from "@/lib/destinationApi";
+import {
+  searchDestinations,
+  type BackendCountry,
+  type BackendPlace,
+} from "@/lib/destinationApi";
 
 export function ExploreSearchForm() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [countries, setCountries] = useState<BackendCountry[]>([]);
+  const [places, setPlaces] = useState<BackendPlace[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
@@ -30,11 +35,17 @@ export function ExploreSearchForm() {
           }
 
           setCountries(result.countries);
-          setMessage(result.countries.length ? "" : "No supported countries found.");
+          setPlaces(result.places);
+          setMessage(
+            result.countries.length || result.places.length
+              ? ""
+              : "No supported destinations found.",
+          );
         })
         .catch(() => {
           if (isActive) {
             setCountries([]);
+            setPlaces([]);
             setMessage("Destination search is unavailable right now.");
           }
         })
@@ -60,6 +71,7 @@ export function ExploreSearchForm() {
       return country.slug === normalizedQuery || countryName === normalizedQuery;
     });
     const country = exactCountry ?? countries[0];
+    const place = places[0];
 
     if (country) {
       setMessage("");
@@ -67,7 +79,13 @@ export function ExploreSearchForm() {
       return;
     }
 
-    setMessage(normalizedQuery ? "No supported countries found." : "Enter a destination to search.");
+    if (place?.country_slug) {
+      setMessage("");
+      router.push(`/explore/${place.country_slug}#place-${place.slug}`);
+      return;
+    }
+
+    setMessage(normalizedQuery ? "No supported destinations found." : "Enter a destination to search.");
   };
 
   return (
@@ -92,6 +110,7 @@ export function ExploreSearchForm() {
             }
             if (nextQuery.trim().length < 2) {
               setCountries([]);
+              setPlaces([]);
               setIsSearching(false);
             } else {
               setIsSearching(true);
@@ -115,7 +134,7 @@ export function ExploreSearchForm() {
           Searching CoVoyage destinations...
         </p>
       ) : null}
-      {countries.length ? (
+      {countries.length || places.length ? (
         <div className="mt-3 border border-white/14 bg-black/58 p-2 backdrop-blur">
           {countries.slice(0, 5).map((country) => (
             <button
@@ -130,6 +149,20 @@ export function ExploreSearchForm() {
                   {country.region}
                 </span>
               ) : null}
+            </button>
+          ))}
+          {places.slice(0, 5).map((place) => (
+            <button
+              className="block w-full px-3 py-3 text-left text-sm text-[#F5F1E8] transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D8BE8A]"
+              key={`${place.country_slug}-${place.slug}`}
+              onClick={() => router.push(`/explore/${place.country_slug}#place-${place.slug}`)}
+              type="button"
+            >
+              <span className="font-medium">{place.name ?? place.slug}</span>
+              <span className="ml-2 text-xs uppercase tracking-[0.16em] text-[#D8BE8A]/75">
+                {place.region ? `${place.region} / ` : ""}
+                {place.country_slug.replace(/-/g, " ")}
+              </span>
             </button>
           ))}
         </div>

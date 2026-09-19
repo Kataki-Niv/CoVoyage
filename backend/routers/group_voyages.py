@@ -439,6 +439,21 @@ def create_group_voyage(
 def get_group_voyages(current_user=Depends(get_current_user)):
     collections = get_group_collections_or_503()
     current_user_id = str(current_user["_id"])
+    current_profile = collections["profiles"].find_one({"user_id": current_user_id})
+    preferred_destinations = (
+        current_profile.get("preferred_destinations", [])
+        if current_profile
+        else []
+    )
+    normalized_preferred_destinations = {
+        normalize_text(destination)
+        for destination in preferred_destinations
+        if normalize_text(destination)
+    }
+
+    if not normalized_preferred_destinations:
+        return []
+
     voyages = collections["group_voyages"].find(
         {"status": "open", "visibility": {"$ne": "private"}}
     ).sort("created_at", -1)
@@ -446,6 +461,8 @@ def get_group_voyages(current_user=Depends(get_current_user)):
     return [
         serialize_voyage(voyage, current_user_id, collections)
         for voyage in voyages
+        if normalize_text(voyage.get("destination"))
+        in normalized_preferred_destinations
     ]
 
 

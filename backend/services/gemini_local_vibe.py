@@ -26,7 +26,7 @@ GEMINI_MODEL_ENV = "GEMINI_MODEL"
 GEMINI_FALLBACK_MODELS_ENV = "GEMINI_FALLBACK_MODELS"
 GEMINI_ENDPOINT_ENV = "GEMINI_GENERATE_CONTENT_ENDPOINT"
 GEMINI_TIMEOUT_SECONDS_ENV = "GEMINI_TIMEOUT_SECONDS"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-3.5-flash-lite",)
 DEFAULT_GEMINI_GENERATE_CONTENT_BASE_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models"
@@ -321,7 +321,7 @@ def compact_local_insights(insights: Any, limit: int = 4) -> list[dict[str, str]
     ]
 
 
-def compact_phrase_list(phrases: Any, limit: int = 5) -> list[dict[str, str]]:
+def compact_phrase_list(phrases: Any, limit: int = 6) -> list[dict[str, str]]:
     if not isinstance(phrases, list):
         return []
 
@@ -403,10 +403,34 @@ def compact_place_recommendation(recommendation: dict[str, Any]) -> dict[str, An
     }
 
 
+CURATED_DEMO_EVENTS_BY_COUNTRY = {
+    "argentina": [{"title": "Buenos Aires Tango and San Telmo Market Route", "category": "Culture", "location": "Buenos Aires", "date_start": "curated-seasonal", "description": "Demo route for tango history, cafe stops, antique stalls, and late-evening city rhythm."}],
+    "canada": [{"title": "Banff Lakes and Mountain Shuttle Day", "category": "Nature", "location": "Banff National Park", "date_start": "curated-summer", "description": "Demo mountain day around lake access, park shuttles, trail etiquette, and early starts."}],
+    "france": [{"title": "Provence Lavender Market Morning", "category": "Food / Culture", "location": "Provence", "date_start": "curated-summer", "description": "Demo market route through lavender-country stalls, local produce, hill towns, and warm evening squares."}],
+    "guatemala": [{"title": "Antigua Coffee Courtyard and Artisan Market Walk", "category": "Culture", "location": "Antigua Guatemala", "date_start": "curated-rainy-season", "description": "Demo walk through courtyard cafes, craft markets, volcano viewpoints, and rain-aware pacing."}],
+    "iceland": [{"title": "Reykjavik Culture Night Route", "category": "Culture", "location": "Reykjavik", "date_start": "curated-summer", "description": "Demo city route through museums, harbor walks, music spaces, pools, and late-light neighborhoods."}],
+    "indonesia": [{"title": "Ubud Temple Arts Evening", "category": "Arts", "location": "Ubud, Bali", "date_start": "curated-dry-season", "description": "Demo evening for temple etiquette, dance performance context, craft streets, and dinner pacing."}],
+    "italy": [{"title": "Tuscany Village Food and Harvest Table", "category": "Food", "location": "Tuscany", "date_start": "curated-late-summer", "description": "Demo listing around market produce, regional pasta, vineyard villages, and slow evening meals."}],
+    "japan": [{"title": "Kyoto Lantern Lane Evening", "category": "Culture", "location": "Kyoto", "date_start": "curated-summer", "description": "Demo evening around lantern-lit lanes, temple-area manners, seasonal sweets, and quiet walking routes."}],
+    "kenya": [{"title": "Nairobi Storytelling and Maasai Market Day", "category": "Culture", "location": "Nairobi", "date_start": "curated", "description": "Demo city listing focused on craft markets, Kenyan design, food stops, and community-led cultural context."}],
+    "mexico": [{"title": "Oaxaca Market Mole Evening", "category": "Food", "location": "Oaxaca", "date_start": "curated", "description": "Demo food-culture route through market stalls, mole traditions, artisan streets, and evening plazas."}],
+    "morocco": [{"title": "Marrakech Medina Storytelling Evening", "category": "Culture", "location": "Marrakech", "date_start": "curated", "description": "Demo medina evening around souk pacing, tea culture, food stalls, and old-city storytelling."}],
+    "new-zealand": [{"title": "Rotorua Maori Arts and Geothermal Evening", "category": "Culture / Nature", "location": "Rotorua", "date_start": "curated-winter", "description": "Demo experience connecting geothermal landscapes, Maori arts context, local food, and visitor protocol."}],
+    "norway": [{"title": "Bergen Fjord Music and Seafood Evening", "category": "Culture / Food", "location": "Bergen", "date_start": "curated-summer", "description": "Demo harbor evening shaped around fjord access, seafood stalls, museums, and local music."}],
+    "peru": [{"title": "Cusco Andean Textile and Market Day", "category": "Culture", "location": "Cusco", "date_start": "curated-dry-season", "description": "Demo highland day around textile traditions, market pacing, acclimatization-aware walking, and Andean food."}],
+    "portugal": [{"title": "Porto Fado and Ribeira Food Evening", "category": "Music / Food", "location": "Porto", "date_start": "curated-summer", "description": "Demo evening through riverfront streets, tiled facades, small plates, and Portuguese music context."}],
+    "south-africa": [{"title": "Cape Town Gallery Night and Food Market Route", "category": "Arts / Food", "location": "Cape Town", "date_start": "curated", "description": "Demo urban route through gallery streets, design spaces, food markets, and Table Mountain-backed evenings."}],
+    "spain": [{"title": "Seville Tapas and Flamenco Night", "category": "Culture / Food", "location": "Seville", "date_start": "curated-summer", "description": "Demo evening around Andalusian streets, tapas pacing, flamenco context, and late-night rhythm."}],
+    "thailand": [{"title": "Chiang Mai Lanna Craft and Night Market Walk", "category": "Culture", "location": "Chiang Mai", "date_start": "curated", "description": "Demo northern Thailand evening with temple manners, Lanna craft context, food stalls, and market pacing."}],
+    "turkey": [{"title": "Istanbul Bosphorus Culture Evening", "category": "Culture", "location": "Istanbul", "date_start": "curated", "description": "Demo cross-city evening connecting ferry views, mosque etiquette, tea stops, bazaars, and neighborhood food."}],
+    "vietnam": [{"title": "Hoi An Lantern Town Food Walk", "category": "Food / Culture", "location": "Hoi An", "date_start": "curated", "description": "Demo heritage-town evening through lantern streets, central Vietnamese dishes, tailoring lanes, and riverfront pacing."}],
+}
+
+
 def static_events_for_country(country_slug: str, limit: int = 5) -> list[dict[str, Any]]:
     datasets = load_static_destination_datasets()
     dataset = datasets.get(country_slug) or {}
-    events = dataset.get("events") or []
+    events = dataset.get("events") or CURATED_DEMO_EVENTS_BY_COUNTRY.get(country_slug, [])
     compacted = []
 
     for event in events[:limit]:
@@ -753,7 +777,10 @@ def call_gemini_interaction_with_metadata(
                     error_body[:1000],
                 )
 
-                if 500 <= error.code < 600 and model_index < len(models) - 1:
+                if (
+                    (error.code == 404 or 500 <= error.code < 600)
+                    and model_index < len(models) - 1
+                ):
                     logger.warning(
                         "Gemini model %s returned HTTP %s; trying configured fallback model",
                         model,

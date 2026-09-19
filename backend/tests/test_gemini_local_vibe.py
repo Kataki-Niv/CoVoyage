@@ -197,7 +197,7 @@ class LocalVibeGeminiTests(unittest.TestCase):
             )
 
         self.assertEqual(result.text, "Grounded Gemini answer.")
-        self.assertEqual(result.model, "gemini-2.5-flash")
+        self.assertEqual(result.model, "gemini-3.6-flash")
         self.assertEqual(result.attempts, 1)
 
     def test_assistant_rate_limit_uses_existing_limiter(self):

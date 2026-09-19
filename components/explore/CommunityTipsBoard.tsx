@@ -49,47 +49,10 @@ type DiscussionTip = {
   detail: string;
   moderationStatus?: "pending" | "approved" | "rejected";
   quote: string;
-  rating: string;
+  rating?: string | null;
   replies: TipReply[];
   replyCount: number;
 };
-
-const fallbackReplies: TipReply[][] = [
-  [
-    {
-      author: "Maya Chen",
-      text: "Did you need a 4x4 for this route?",
-    },
-    {
-      author: "Jon",
-      text: "Yes. Check road conditions before heading out, especially after rain.",
-    },
-  ],
-  [
-    {
-      author: "Arjun Mehta",
-      text: "Leaving early made a huge difference for us.",
-    },
-    {
-      author: "Elena Rossi",
-      text: "Was it easy to find places to stop along the way?",
-    },
-    {
-      author: "Maya Chen",
-      text: "A few scenic stops were easy, but food and fuel need planning.",
-    },
-  ],
-  [
-    {
-      author: "Riya Sen",
-      text: "This helped us slow down instead of chasing too many stops.",
-    },
-    {
-      author: "Noah Patel",
-      text: "The light later in the day was beautiful for photos.",
-    },
-  ],
-];
 
 function parseTraveler(traveler: string) {
   const [name, ...detailParts] = traveler.split(",");
@@ -105,7 +68,7 @@ function parseTraveler(traveler: string) {
 }
 
 function buildSeedTips(placeName: string, tips: CommunityTip[]): DiscussionTip[] {
-  const baseTips: DiscussionTip[] = tips.map((tip, index) => {
+  return tips.map((tip, index) => {
     const traveler = parseTraveler(tip.traveler);
 
     return {
@@ -115,41 +78,27 @@ function buildSeedTips(placeName: string, tips: CommunityTip[]): DiscussionTip[]
       detail: traveler.detail || tip.location,
       quote: tip.quote,
       rating: tip.rating,
-      replies: fallbackReplies[index % fallbackReplies.length],
-      replyCount: fallbackReplies[index % fallbackReplies.length].length,
+      replies: [],
+      replyCount: 0,
     };
   });
-
-  const extraTips: DiscussionTip[] = [
-    {
-      id: `${placeName}-early-start`,
-      author: "Maya Chen",
-      category: "Transport",
-      detail: "Recent traveler",
-      quote:
-        "Start earlier than feels necessary. The quieter hours made the whole route feel calmer and more personal.",
-      rating: "4.7",
-      replies: fallbackReplies[1],
-      replyCount: fallbackReplies[1].length,
-    },
-    {
-      id: `${placeName}-pack-layers`,
-      author: "Arjun Mehta",
-      category: "Safety",
-      detail: "Road trip planner",
-      quote:
-        "Keep a warm layer and snacks within reach. The weather shifts quickly, and small delays are part of the rhythm.",
-      rating: "4.6",
-      replies: fallbackReplies[2],
-      replyCount: fallbackReplies[2].length,
-    },
-  ];
-
-  return [...baseTips, ...extraTips];
 }
 
 function getAuthorDetail(author: CommunityTipResponse["author"]) {
-  return [author.role, author.location].filter(Boolean).join(" · ");
+  const locationParts = author.location
+    ?.split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return locationParts?.at(-1) ?? "";
+}
+
+function formatCountryLabel(countrySlug: string) {
+  return countrySlug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function mapApiReply(reply: CommunityReplyResponse): TipReply {
@@ -161,16 +110,16 @@ function mapApiReply(reply: CommunityReplyResponse): TipReply {
   };
 }
 
-function mapApiTip(tip: CommunityTipResponse): DiscussionTip {
+function mapApiTip(tip: CommunityTipResponse, countrySlug: string): DiscussionTip {
   return {
     id: tip.id,
     author: tip.author.name,
     authorId: tip.author_id,
     category: tip.category,
-    detail: getAuthorDetail(tip.author) || "Community traveler",
+    detail: getAuthorDetail(tip.author) || formatCountryLabel(countrySlug),
     moderationStatus: tip.moderation_status,
     quote: tip.text,
-    rating: typeof tip.rating === "number" ? tip.rating.toFixed(1) : "New",
+    rating: typeof tip.rating === "number" ? tip.rating.toFixed(1) : null,
     replies: [],
     replyCount: tip.reply_count,
   };
@@ -236,7 +185,7 @@ export function CommunityTipsBoard({
           return;
         }
 
-        setDiscussionTips(apiTips.map(mapApiTip));
+        setDiscussionTips(apiTips.map((tip) => mapApiTip(tip, countrySlug)));
         setErrorMessage(null);
       })
       .catch(() => {
@@ -256,7 +205,7 @@ export function CommunityTipsBoard({
     return () => {
       isActive = false;
     };
-  }, [placeSlug, seedTips]);
+  }, [countrySlug, placeSlug, seedTips]);
 
   useEffect(() => {
     const refreshStoredUser = async () => {
@@ -415,7 +364,7 @@ export function CommunityTipsBoard({
         }, getValidAuthToken());
 
         setDiscussionTips((currentTips) => [
-          mapApiTip(createdTip),
+          mapApiTip(createdTip, countrySlug),
           ...currentTips,
         ]);
         setNewTip({
@@ -436,10 +385,10 @@ export function CommunityTipsBoard({
         id: `${placeName}-${Date.now()}`,
         author: storedUserName,
         category: newTip.category,
-        detail: "Community traveler",
+        detail: formatCountryLabel(countrySlug),
         moderationStatus: "approved",
         quote,
-        rating: "New",
+        rating: null,
         replies: [],
         replyCount: 0,
       },
@@ -615,7 +564,7 @@ export function CommunityTipsBoard({
                 : "border border-[#dfc9be] bg-[#fffaf3] px-4 py-4 text-sm text-[#6f5b53]"
             }
           >
-            No community tips yet. Share the first practical note for this place.
+            No traveler tips have been shared for this place yet.
           </div>
         ) : null}
 
@@ -687,7 +636,9 @@ export function CommunityTipsBoard({
                         : "mt-1 text-[10px] uppercase tracking-[0.14em] text-[#a89288]"
                     }
                   >
-                    {tip.detail} · {tip.rating === "New" ? "New" : `★ ${tip.rating}`}
+                    {[tip.detail, tip.rating ? `★ ${tip.rating}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-[11px] uppercase tracking-[0.14em]">

@@ -13,6 +13,11 @@ import type {
   JourneyPlace,
   SnapshotItem,
 } from "@/components/explore/destinationData";
+import { getCuratedPlaceContent } from "@/components/explore/curatedPlaceContent";
+import {
+  getCuratedCountryHeroImage,
+  getCuratedPlaceImage,
+} from "@/components/explore/curatedPlaceImages";
 
 const monthNames = [
   "January",
@@ -28,6 +33,29 @@ const monthNames = [
   "November",
   "December",
 ];
+
+const localPhraseTitlesByCountrySlug: Record<string, string> = {
+  argentina: "A Little Spanish",
+  canada: "A Little English and French",
+  france: "A Little French",
+  guatemala: "A Little Spanish",
+  iceland: "A Little Icelandic",
+  indonesia: "A Little Indonesian",
+  italy: "A Little Italian",
+  japan: "A Little Japanese",
+  kenya: "A Little Swahili",
+  mexico: "A Little Spanish",
+  morocco: "A Little Moroccan Arabic",
+  "new-zealand": "A Little English and Te Reo Maori",
+  norway: "A Little Norwegian",
+  peru: "A Little Spanish",
+  portugal: "A Little Portuguese",
+  "south-africa": "A Little Local Language",
+  spain: "A Little Spanish",
+  thailand: "A Little Thai",
+  turkey: "A Little Turkish",
+  vietnam: "A Little Vietnamese",
+};
 
 function getMonthName(month?: number) {
   if (!month || month < 1 || month > 12) {
@@ -157,19 +185,34 @@ function buildPlaceFacts(
   monthlyFactor: BackendMonthlyFactor | undefined,
   monthName: string | null,
 ) {
+  const curatedContent = getCuratedPlaceContent(place.slug);
+
   return fallbackFacts.map((fact) => {
     switch (fact.label) {
       case "Why Visit":
-        return { ...fact, value: place.why_visit ?? fact.value };
+        return {
+          ...fact,
+          value: curatedContent?.whyVisit ?? place.why_visit ?? fact.value,
+        };
       case "Time Required":
-        return { ...fact, value: place.time_required ?? fact.value };
+        return {
+          ...fact,
+          value: curatedContent?.timeRequired ?? place.time_required ?? fact.value,
+        };
       case "Local Experience":
-        return { ...fact, value: place.local_experience ?? fact.value };
+        return {
+          ...fact,
+          value:
+            curatedContent?.localExperience ??
+            getNonGenericLocalExperience(place.local_experience) ??
+            fact.value,
+        };
       case "August Note":
         return {
           ...fact,
           label: monthName ? `${monthName} Note` : "Seasonal Note",
           value:
+            curatedContent?.seasonalNote ??
             monthlyFactor?.accessibility_information ??
             monthlyFactor?.weather_suitability_input ??
             fact.value,
@@ -178,6 +221,24 @@ function buildPlaceFacts(
         return fact;
     }
   });
+}
+
+function getNonGenericLocalExperience(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = value.toLowerCase();
+
+  if (
+    normalizedValue.includes("more than a checklist stop") ||
+    normalizedValue.includes("local food, seasonal pacing") ||
+    normalizedValue.includes("transit buffers")
+  ) {
+    return null;
+  }
+
+  return value;
 }
 
 function mapJourneyPlace(
@@ -190,14 +251,18 @@ function mapJourneyPlace(
     return fallbackPlace;
   }
 
+  const curatedImage = getCuratedPlaceImage(backendPlace.slug);
+
   return {
     ...fallbackPlace,
     placeSlug: backendPlace.slug,
     name: backendPlace.name ?? fallbackPlace.name,
     region: backendPlace.region ?? fallbackPlace.region,
-    image: backendPlace.media?.[0]?.url ?? fallbackPlace.image,
-    imageAlt: getMediaAlt(backendPlace.media?.[0]) ?? fallbackPlace.imageAlt,
+    image: curatedImage?.image ?? backendPlace.media?.[0]?.url ?? fallbackPlace.image,
+    imageAlt:
+      curatedImage?.imageAlt ?? getMediaAlt(backendPlace.media?.[0]) ?? fallbackPlace.imageAlt,
     story:
+      getCuratedPlaceContent(backendPlace.slug)?.journeyDescription ??
       backendPlace.story ??
       backendPlace.description ??
       fallbackPlace.story,
@@ -312,6 +377,7 @@ export function mapBackendDestinationToDestinationData(
     ...item,
     value: getSnapshotValue(item, backend, latestMonthlyFactor, fallback),
   }));
+  const curatedHeroImage = getCuratedCountryHeroImage(backend.country.slug);
 
   return {
     ...fallback,
@@ -323,8 +389,12 @@ export function mapBackendDestinationToDestinationData(
     },
     featuredCategory:
       backend.country.featured_category ?? fallback.featuredCategory,
-    heroImage: backend.country.hero_media?.url ?? fallback.heroImage,
-    heroImageAlt: getMediaAlt(backend.country.hero_media) ?? fallback.heroImageAlt,
+    heroImage:
+      curatedHeroImage?.image ?? backend.country.hero_media?.url ?? fallback.heroImage,
+    heroImageAlt:
+      curatedHeroImage?.imageAlt ??
+      getMediaAlt(backend.country.hero_media) ??
+      fallback.heroImageAlt,
     intro: backend.country.overview ?? fallback.intro,
     journeyTitle: backend.country.journey_title ?? fallback.journeyTitle,
     journeyIntro: backend.country.journey_intro ?? fallback.journeyIntro,
@@ -338,13 +408,16 @@ export function mapBackendDestinationToDestinationData(
     goodToKnow: backendGoodToKnow.length
       ? backendGoodToKnow
       : fallback.goodToKnow,
+    localPhrasesTitle:
+      localPhraseTitlesByCountrySlug[backend.country.slug ?? ""] ??
+      fallback.localPhrasesTitle,
     localPhrases: backend.country.local_phrases?.length
-      ? backend.country.local_phrases.map((phrase) => ({
+      ? backend.country.local_phrases.slice(0, 9).map((phrase) => ({
           english: phrase.english ?? "",
           local: phrase.local ?? "",
           pronunciation: phrase.pronunciation,
           usageNote: phrase.usage_note,
         }))
-      : fallback.localPhrases,
+      : fallback.localPhrases.slice(0, 9),
   };
 }

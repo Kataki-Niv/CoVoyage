@@ -139,6 +139,7 @@ def search_destinations(q: str = Query(..., min_length=1, max_length=80)):
                     "$or": [
                         {"name": search_pattern},
                         {"slug": search_pattern},
+                        {"region": search_pattern},
                     ]
                 }
             )
@@ -147,7 +148,14 @@ def search_destinations(q: str = Query(..., min_length=1, max_length=80)):
         places = [
             serialize_document(place)
             for place in collections["places"]
-            .find({"name": search_pattern})
+            .find(
+                {
+                    "$or": [
+                        {"name": search_pattern},
+                        {"region": search_pattern},
+                    ]
+                }
+            )
             .sort([("country_slug", 1), ("name", 1)])
         ]
 
