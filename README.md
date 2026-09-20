@@ -6,6 +6,9 @@ The project is designed for evaluation as a Master's-level software project and 
 
 CoVoyage is not a live booking marketplace, payment system, or production travel agency.
 
+## Live Demo
+https://co-voyage.vercel.app/
+
 ## Core Idea
 
 CoVoyage helps solo and small-group travelers answer three questions:

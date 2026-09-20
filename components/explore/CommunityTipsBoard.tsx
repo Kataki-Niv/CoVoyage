@@ -787,58 +787,66 @@ export function CommunityTipsBoard({
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/48 px-4 backdrop-blur-[2px]">
+        <div className="fixed inset-x-0 bottom-0 top-24 z-[120] flex items-start justify-center overflow-hidden bg-black/48 px-4 py-4 backdrop-blur-[2px] sm:top-28 sm:py-6">
           <form
             aria-label={`Share a ${placeName} community tip`}
             className={
               isDarkEditorial
-                ? "w-full max-w-md border border-[#D8BE8A]/24 bg-[#111112] p-4 shadow-2xl shadow-black/40"
-                : "w-full max-w-md border border-[#d8b7aa] bg-[#fffaf3] p-4 shadow-2xl shadow-[#4e3f39]/25"
+                ? "flex max-h-full w-full max-w-md flex-col overflow-hidden border border-[#D8BE8A]/24 bg-[#111112] shadow-2xl shadow-black/40"
+                : "flex max-h-full w-full max-w-md flex-col overflow-hidden border border-[#d8b7aa] bg-[#fffaf3] shadow-2xl shadow-[#4e3f39]/25"
             }
             onSubmit={handleShareTip}
           >
+            <div className="shrink-0 px-4 pt-4">
+              <div
+                className={
+                  isDarkEditorial
+                    ? "flex items-start justify-between gap-4 border-b border-white/10 pb-4"
+                    : "flex items-start justify-between gap-4 border-b border-[#eadbd2] pb-4"
+                }
+              >
+                <div>
+                  <p
+                    className={
+                      isDarkEditorial
+                        ? "text-[10px] font-medium uppercase tracking-[0.18em] text-[#D8BE8A]"
+                        : "text-[10px] font-medium uppercase tracking-[0.18em] text-[#a16f61]"
+                    }
+                  >
+                    Community Tips
+                  </p>
+                  <h2
+                    className={
+                      isDarkEditorial
+                        ? "mt-1 font-serif text-2xl leading-tight text-[#F5F1E8]"
+                        : "mt-1 font-serif text-2xl leading-tight text-[#443733]"
+                    }
+                  >
+                    Share a {placeName} Tip
+                  </h2>
+                </div>
+                <button
+                  aria-label="Close"
+                  className={
+                    isDarkEditorial
+                      ? "grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#D8BE8A]/24 text-[#D8BE8A] transition-colors hover:bg-[#D8BE8A] hover:text-[#0B0B0C]"
+                      : "grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d8b7aa] text-[#6f5b53] transition-colors hover:bg-[#efe1d8]"
+                  }
+                  onClick={() => setIsModalOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
             <div
               className={
                 isDarkEditorial
-                  ? "flex items-start justify-between gap-4 border-b border-white/10 pb-4"
-                  : "flex items-start justify-between gap-4 border-b border-[#eadbd2] pb-4"
+                  ? "min-h-0 max-h-[42vh] flex-1 space-y-4 overflow-y-scroll px-4 pt-5 pr-3 [scrollbar-color:rgba(216,190,138,0.55)_rgba(255,255,255,0.06)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D8BE8A]/45 [&::-webkit-scrollbar-track]:bg-white/[0.04] sm:max-h-[46vh]"
+                  : "min-h-0 max-h-[42vh] flex-1 space-y-4 overflow-y-scroll px-4 pt-5 pr-3 [scrollbar-color:#a16f61_#f2e5dc] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#a16f61]/55 [&::-webkit-scrollbar-track]:bg-[#f2e5dc] sm:max-h-[46vh]"
               }
             >
-              <div>
-                <p
-                  className={
-                    isDarkEditorial
-                      ? "text-[10px] font-medium uppercase tracking-[0.18em] text-[#D8BE8A]"
-                      : "text-[10px] font-medium uppercase tracking-[0.18em] text-[#a16f61]"
-                  }
-                >
-                  Community Tips
-                </p>
-                <h2
-                  className={
-                    isDarkEditorial
-                      ? "mt-1 font-serif text-2xl leading-tight text-[#F5F1E8]"
-                      : "mt-1 font-serif text-2xl leading-tight text-[#443733]"
-                  }
-                >
-                  Share a {placeName} Tip
-                </h2>
-              </div>
-              <button
-                aria-label="Close"
-                className={
-                  isDarkEditorial
-                    ? "grid h-9 w-9 place-items-center rounded-full border border-[#D8BE8A]/24 text-[#D8BE8A] transition-colors hover:bg-[#D8BE8A] hover:text-[#0B0B0C]"
-                    : "grid h-9 w-9 place-items-center rounded-full border border-[#d8b7aa] text-[#6f5b53] transition-colors hover:bg-[#efe1d8]"
-                }
-                onClick={() => setIsModalOpen(false)}
-                type="button"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4 pt-5">
               <div
                 className={
                   isDarkEditorial
@@ -929,29 +937,31 @@ export function CommunityTipsBoard({
               </label>
             </div>
 
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                className={
-                  isDarkEditorial
-                    ? "border border-white/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#B8B0A4] transition-colors hover:border-white/20 hover:text-[#F5F1E8]"
-                    : "border border-[#d8b7aa] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#7d584e] transition-colors hover:bg-[#efe1d8]"
-                }
-                onClick={() => setIsModalOpen(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className={
-                  isDarkEditorial
-                    ? "bg-[#D8BE8A] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#0B0B0C] transition-colors hover:bg-[#F5F1E8] disabled:cursor-not-allowed disabled:opacity-45"
-                    : "bg-[#7d584e] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#fffaf3] disabled:cursor-not-allowed disabled:opacity-45"
-                }
-                disabled={!storedUserName || !newTip.quote.trim()}
-                type="submit"
-              >
-                Share Tip
-              </button>
+            <div className="shrink-0 px-4 pb-4 pt-5">
+              <div className="flex justify-end gap-3">
+                <button
+                  className={
+                    isDarkEditorial
+                      ? "border border-white/10 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#B8B0A4] transition-colors hover:border-white/20 hover:text-[#F5F1E8]"
+                      : "border border-[#d8b7aa] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#7d584e] transition-colors hover:bg-[#efe1d8]"
+                  }
+                  onClick={() => setIsModalOpen(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className={
+                    isDarkEditorial
+                      ? "bg-[#D8BE8A] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#0B0B0C] transition-colors hover:bg-[#F5F1E8] disabled:cursor-not-allowed disabled:opacity-45"
+                      : "bg-[#7d584e] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-[#fffaf3] disabled:cursor-not-allowed disabled:opacity-45"
+                  }
+                  disabled={!storedUserName || !newTip.quote.trim()}
+                  type="submit"
+                >
+                  Share Tip
+                </button>
+              </div>
             </div>
           </form>
         </div>
