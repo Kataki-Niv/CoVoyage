@@ -345,6 +345,27 @@ def run_smoke():
         )
         assert_status(reset_login_response, 200, "reset password login")
 
+        delete_response = client.delete("/account", headers=auth_headers)
+        assert_status(delete_response, 200, "account deletion")
+
+        deleted_session_response = client.get("/auth/session", headers=auth_headers)
+        assert_status(deleted_session_response, 401, "deleted account session rejected")
+
+        deleted_login_response = client.post(
+            "/login",
+            json={"email": email, "password": reset_password},
+        )
+        assert_status(deleted_login_response, 401, "deleted account login rejected")
+
+        if users.find_one({"email": email}) is not None:
+            raise AssertionError("Deleted user still exists")
+
+        if profiles.find_one({"user_id": user_id}) is not None:
+            raise AssertionError("Deleted profile still exists")
+
+        if account_tokens.find_one({"user_id": user_id}) is not None:
+            raise AssertionError("Deleted account tokens still exist")
+
         print("account smoke passed")
     finally:
         if user_id:

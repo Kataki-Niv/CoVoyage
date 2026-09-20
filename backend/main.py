@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -110,15 +111,33 @@ PROFILE_RESPONSE_DEFAULTS = {
 
 ensure_media_directories()
 
+LOCAL_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+LOCAL_CORS_ORIGIN_REGEX = r"http://(localhost|127\.0\.0\.1):30\d{2}"
+
+
+def parse_cors_origins():
+    configured_origins = [
+        origin.strip()
+        for origin in os.getenv("COVOYAGE_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    return list(dict.fromkeys([*LOCAL_CORS_ORIGINS, *configured_origins]))
+
+
+def get_cors_origin_regex():
+    configured_regex = os.getenv("COVOYAGE_CORS_ORIGIN_REGEX", "").strip()
+    return configured_regex or LOCAL_CORS_ORIGIN_REGEX
+
+
 app = FastAPI()
 app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):30\d{2}",
+    allow_origins=parse_cors_origins(),
+    allow_origin_regex=get_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -398,6 +417,25 @@ def change_password(
     )
 
     return {"message": "Password updated successfully."}
+
+
+@app.delete("/account")
+def delete_account(current_user=Depends(get_current_user)):
+    users = get_users_or_503()
+    profiles = get_profiles_or_503()
+    account_tokens = get_account_tokens_or_503()
+    user_id = str(current_user["_id"])
+
+    profile = profiles.find_one({"user_id": user_id})
+
+    if profile:
+        delete_local_profile_image(profile.get("profile_picture_url"))
+
+    profiles.delete_one({"user_id": user_id})
+    account_tokens.delete_many({"user_id": user_id})
+    users.delete_one({"_id": current_user["_id"]})
+
+    return {"message": "Account deleted successfully."}
 
 
 @app.post("/account/email/verification/request")

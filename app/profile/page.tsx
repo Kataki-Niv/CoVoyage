@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Lock, LogOut, Mail, ShieldCheck } from "lucide-react";
+import { Camera, Lock, LogOut, Mail, ShieldCheck, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -16,6 +16,7 @@ import {
   changePassword,
   clearAuth,
   decodeJwtPayload,
+  deleteAccount,
   getAccount,
   getValidAuthToken,
   getStoredUser,
@@ -956,6 +957,9 @@ export default function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState("");
   const [isRequestingVerification, setIsRequestingVerification] =
     useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -1516,6 +1520,37 @@ export default function ProfilePage() {
     router.push("/login");
   };
 
+  const handleDeleteAccount = async () => {
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setAccountDeleteError("");
+    setIsDeletingAccount(true);
+
+    try {
+      await deleteAccount(token);
+      clearAuth();
+      router.push("/login");
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        clearAuth();
+        router.push("/login");
+        return;
+      }
+
+      setAccountDeleteError(
+        caughtError instanceof ApiError
+          ? caughtError.detail
+          : "Unable to delete account.",
+      );
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const displayedAccountUser = accountUser || getStoredUser();
   const accountEmail =
     displayedAccountUser?.email || decodeTokenSubject(getValidAuthToken());
@@ -1933,6 +1968,39 @@ export default function ProfilePage() {
                   ))}
                 </>
               )}
+              {!isLoading ? (
+                <ContentCard className={darkCardClass}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-red-200/70">
+                        <Trash2 className="h-4 w-4" />
+                        Danger Zone
+                      </p>
+                      <h2 className="font-serif text-3xl text-white">
+                        Delete Account
+                      </h2>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">
+                        Permanently remove your login and travel profile from
+                        CoVoyage.
+                      </p>
+                      {accountDeleteError ? (
+                        <p className="mt-3 rounded-[4px] border border-red-400/30 bg-red-950/30 px-3 py-2 text-sm text-red-100">
+                          {accountDeleteError}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button
+                      className="w-fit border border-red-400/40 bg-red-950/50 text-red-100 hover:bg-red-900/70"
+                      disabled={isDeletingAccount}
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {isDeletingAccount ? "Deleting..." : "Delete Account"}
+                    </Button>
+                  </div>
+                </ContentCard>
+              ) : null}
               <Button
                 className="w-fit bg-[#f8f4ea] text-black hover:bg-white"
                 disabled={isLoading || isSaving}
@@ -1945,6 +2013,51 @@ export default function ProfilePage() {
           </div>
         </section>
         </main>
+        {showDeleteConfirm ? (
+          <div className="fixed inset-0 z-[80] grid place-items-center bg-black/72 px-5">
+            <div
+              className="w-full max-w-md rounded-[8px] border border-red-400/20 bg-[#101010] p-6 text-left shadow-2xl shadow-black/50"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+            >
+              <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-red-200/70">
+                <Trash2 className="h-4 w-4" />
+                Permanent Action
+              </p>
+              <h2
+                className="font-serif text-3xl text-white"
+                id="delete-account-title"
+              >
+                Delete your account?
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-white/62">
+                This will permanently remove your CoVoyage login and travel
+                profile. This action cannot be undone.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <Button
+                  className="border-white/18 bg-transparent text-white hover:bg-white/10"
+                  disabled={isDeletingAccount}
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="border border-red-400/40 bg-red-950/70 text-red-100 hover:bg-red-900/80"
+                  disabled={isDeletingAccount}
+                  type="button"
+                  onClick={handleDeleteAccount}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeletingAccount ? "Deleting..." : "Delete Account"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <Footer />
       </div>
     </AuthGuard>

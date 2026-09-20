@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
@@ -18,6 +19,8 @@ function ResetPasswordForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(token ? "" : "Password reset token is missing.");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((previous) => ({
@@ -86,27 +89,55 @@ function ResetPasswordForm() {
       ) : null}
       <label className="block text-sm font-medium text-white/72">
         New Password
-        <input
-          className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
-          name="new_password"
-          placeholder="Create a new password"
-          required
-          type="password"
-          value={formData.new_password}
-          onChange={handleChange}
-        />
+        <span className="relative block">
+          <input
+            className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+            name="new_password"
+            placeholder="Create a new password"
+            required
+            type={showNewPassword ? "text" : "password"}
+            value={formData.new_password}
+            onChange={handleChange}
+          />
+          <button
+            aria-label={showNewPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-white/46 transition hover:bg-white/10 hover:text-white"
+            type="button"
+            onClick={() => setShowNewPassword((visible) => !visible)}
+          >
+            {showNewPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </span>
       </label>
       <label className="block text-sm font-medium text-white/72">
         Confirm Password
-        <input
-          className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
-          name="confirm_password"
-          placeholder="Confirm your new password"
-          required
-          type="password"
-          value={formData.confirm_password}
-          onChange={handleChange}
-        />
+        <span className="relative block">
+          <input
+            className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+            name="confirm_password"
+            placeholder="Confirm your new password"
+            required
+            type={showConfirmPassword ? "text" : "password"}
+            value={formData.confirm_password}
+            onChange={handleChange}
+          />
+          <button
+            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-white/46 transition hover:bg-white/10 hover:text-white"
+            type="button"
+            onClick={() => setShowConfirmPassword((visible) => !visible)}
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </span>
       </label>
       <Button
         className="h-11 w-full rounded-none bg-[#f8f4ea] text-black shadow-sm shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-white/10 focus-visible:ring-white/40 focus-visible:ring-offset-[#050505]"

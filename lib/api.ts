@@ -1,6 +1,6 @@
-export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+import { API_BASE_URL } from "@/lib/apiConfig";
+
+export { API_BASE_URL };
 
 const AUTH_TOKEN_KEY = "covoyage_access_token";
 const AUTH_USER_KEY = "covoyage_user";
@@ -307,6 +307,13 @@ export function changePassword(update: PasswordChangeRequest, token: string) {
     method: "PATCH",
     token,
     body: JSON.stringify(update),
+  });
+}
+
+export function deleteAccount(token: string) {
+  return apiRequest<AccountMessageResponse>("/account", {
+    method: "DELETE",
+    token,
   });
 }
 

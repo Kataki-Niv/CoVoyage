@@ -22,7 +22,7 @@ const steps = [
   },
   {
     number: "02",
-    title: "Find Your Tribe",
+    title: "Find Your Travel Community",
     description:
       "Discover travelers whose journeys and preferences align with yours.",
     bullets: [
@@ -36,25 +36,28 @@ const steps = [
   },
   {
     number: "03",
-    title: "Master The Local Vibe",
-    description: "Understand your destination before you arrive.",
+    title: "Discover Your Destination",
+    description:
+      "Understand your destination before you arrive through local culture, practical information, community tips, and safety guidance.",
     bullets: [
       "Discover local culture",
       "Learn practical destination information",
       "Explore community tips",
       "Check safety and preparation information",
+      "Get useful insights before you arrive",
     ],
     image: "/how%20it%20works/step3.jpg",
     imageAlt: "Historic destination street with local culture",
   },
   {
     number: "04",
-    title: "Get Trip Ready",
+    title: "Get Ready For Your Journey",
     description:
-      "Prepare for your journey with the information and essentials you need.",
+      "Prepare for your journey with travel inspiration, practical information, and useful essentials from the CoVoyage community.",
     bullets: [
+      "Read travel stories, guides, and tips from the CoVoyage community",
+      "Discover useful Travel Essentials for your trip",
       "Check important travel preparations",
-      "Discover useful travel essentials",
       "Prepare for your destination",
       "Start your journey with confidence",
     ],

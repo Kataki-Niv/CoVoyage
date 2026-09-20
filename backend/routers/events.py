@@ -165,15 +165,14 @@ def get_destination_events(
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_destination_event(
     event: DestinationEventCreate,
-    current_user=Depends(get_optional_current_user),
+    current_user=Depends(get_current_user),
 ):
     collections = get_events_or_503()
     now = datetime.utcnow()
     event_document = event.model_dump(mode="json")
-
-    if current_user:
-        event_document["organizer_id"] = str(current_user["_id"])
-        event_document["organizer_name"] = user_display_name(current_user)
+    event_document["organizer_id"] = str(current_user["_id"])
+    event_document["organizer_name"] = user_display_name(current_user)
+    event_document["verification_status"] = "needs-review"
 
     event_document.update(
         {

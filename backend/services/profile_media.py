@@ -1,5 +1,6 @@
 import base64
 import binascii
+import os
 from pathlib import Path
 import secrets
 
@@ -9,7 +10,10 @@ from fastapi import HTTPException, status
 MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_JOURNAL_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_JOURNAL_VIDEO_BYTES = 100 * 1024 * 1024
-MEDIA_ROOT = Path(__file__).resolve().parents[1] / "media"
+MEDIA_ROOT = Path(
+    os.getenv("COVOYAGE_MEDIA_ROOT", "").strip()
+    or Path(__file__).resolve().parents[1] / "media"
+)
 PROFILE_IMAGE_ROOT = MEDIA_ROOT / "profile-images"
 JOURNAL_MEDIA_ROOT = MEDIA_ROOT / "journal-media"
 SUPPORTED_IMAGE_TYPES = {

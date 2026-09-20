@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Navbar } from "@/components/layout/Navbar";
@@ -34,6 +35,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -139,15 +141,29 @@ export default function LoginPage() {
             </label>
             <label className="block text-sm font-medium text-white/72">
               Password
-              <input
-                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
-                name="password"
-                placeholder="Enter your password"
-                required
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-              />
+              <span className="relative block">
+                <input
+                  className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                  name="password"
+                  placeholder="Enter your password"
+                  required
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+                <button
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-white/46 transition hover:bg-white/10 hover:text-white"
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </span>
             </label>
             <div className="text-right">
               <Link

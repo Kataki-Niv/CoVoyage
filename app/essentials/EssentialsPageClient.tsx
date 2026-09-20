@@ -111,7 +111,7 @@ export function EssentialsPageClient() {
 function Hero() {
   return (
     <section className="relative overflow-hidden px-5 py-16 sm:px-8 lg:py-24">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.48fr_0.52fr] lg:items-end">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.48fr_0.52fr] lg:items-start">
         <div className="relative z-10 pb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.38em] text-white/52">
             COVOYAGE ESSENTIALS
@@ -142,7 +142,7 @@ function Hero() {
             </div>
           </div>
         </div>
-        <figure className="relative min-h-[420px] overflow-hidden border border-white/10 bg-[#151515] lg:min-h-[620px]">
+        <figure className="relative min-h-[420px] overflow-hidden border border-white/10 bg-[#151515] lg:min-h-[500px]">
           <Image
             alt="Premium travel essentials arranged beside a packed bag"
             className="absolute inset-0 h-full w-full object-cover"

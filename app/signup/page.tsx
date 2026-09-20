@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,6 +33,8 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -180,27 +183,57 @@ export default function SignupPage() {
             </label>
             <label className="block text-sm font-medium text-white/72">
               Password
-              <input
-                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
-                name="password"
-                placeholder="Create a password"
-                required
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-              />
+              <span className="relative block">
+                <input
+                  className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                  name="password"
+                  placeholder="Create a password"
+                  required
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+                <button
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-white/46 transition hover:bg-white/10 hover:text-white"
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </span>
             </label>
             <label className="block text-sm font-medium text-white/72">
               Confirm Password
-              <input
-                className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
-                name="confirmPassword"
-                placeholder="Confirm password"
-                required
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
+              <span className="relative block">
+                <input
+                  className="mt-2 h-11 w-full border border-white/10 bg-black/35 px-4 pr-12 text-sm text-white outline-none transition placeholder:text-white/34 focus:border-white/32 focus:ring-2 focus:ring-white/10"
+                  name="confirmPassword"
+                  placeholder="Confirm password"
+                  required
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+                <button
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
+                  className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-white/46 transition hover:bg-white/10 hover:text-white"
+                  type="button"
+                  onClick={() => setShowConfirmPassword((visible) => !visible)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </span>
             </label>
             <Button
               className="h-11 w-full rounded-none bg-[#f8f4ea] text-black shadow-sm shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-white/10 focus-visible:ring-white/40 focus-visible:ring-offset-[#050505] sm:col-span-2"
