@@ -1,10 +1,7 @@
 # CoVoyage
 
-CoVoyage is a full-stack prototype of an AI-assisted social travel platform. It combines destination discovery, traveler profiles, AI-assisted Tribe matching, Group Voyages, Local Vibe destination guidance, travel journals, community/event flows, and a planning-only travel essentials bag.
+CoVoyage is a full-stack prototype of an AI-assisted social travel platform that brings together destination discovery, traveler profiles, AI-assisted Tribe matching, Group Voyages, personalized destination guidance, travel journals, community tips, event discovery, and a planning-only travel essentials bag.
 
-The project is designed for evaluation as a Master's-level software project and as a startup-style product demo. It should be presented as a working prototype with real application flows, seeded demonstration data, and clearly documented external-service requirements.
-
-CoVoyage is not a live booking marketplace, payment system, or production travel agency.
 
 ## Live Demo
 https://co-voyage.vercel.app/
@@ -53,22 +50,35 @@ FastAPI backend
 
 The frontend and backend are deployed separately. The Next.js frontend can be hosted on Vercel, but the FastAPI backend must be deployed as its own service.
 
-## Implemented Features
+## Core Features
 
-- Account registration, login, JWT authentication, profile setup, and profile media upload
-- Traveler discoverability controls and AI-assisted Tribe matching
-- Tribe connection requests and direct chat access rules
-- Group Voyage creation, listing, join requests, lifecycle actions, and group chat access rules
-- Destination exploration pages and recommendation flows
-- Local Vibe chat, discovery chat, and itinerary generation
-- Community tips, replies, destination events, and source-aware event listing
-- Travel journal creation and browsing
-- Essentials catalog browsing and saved bag management
-- Backend seed scripts for repeatable demo data
+### 1. Find Your Tribe
 
-## Event Trust Model
+Find Your Tribe helps travelers discover compatible people to travel with based on their profiles, travel preferences, destinations, dates, interests, travel style, budget, trip duration, and languages. CoVoyage uses AI-assisted semantic matching alongside structured compatibility factors to surface relevant travelers and explain why a match was recommended.
+Users can control their discoverability, explore recommended travelers, and send connection requests. Once a connection is established, they can communicate through direct chat.
+The feature also supports Group Voyages, allowing travelers to create and discover group trips, request to join them, and manage participation through the platform.
 
-Public event listing preserves discovery of trusted event data. User-created destination events require authentication and are stored with `verification_status="needs-review"` so anonymous users cannot create events that appear verified or source-recorded.
+### 2. Master the Local Vibe
+
+Master the Local Vibe connects travelers with the people and experiences that make a destination feel local. Travelers can discover community tips shared by people familiar with a destination, giving them practical recommendations and local insights beyond standard destination information.
+The feature also allows users to post destination-specific events, creating a way for local communities to share events and invite travelers to discover and participate in experiences happening in their area.
+Alongside the community-driven content, CoVoyage provides an AI travel assistant for destination-specific questions, discovery, and itinerary planning. The assistant uses CoVoyage's destination context to provide relevant guidance and can fall back to deterministic responses when the AI service is unavailable.
+
+### 3. CoVoyage Journals
+
+CoVoyage Journals is the social storytelling space of CoVoyage, where travelers can share their journeys and discover experiences from other travelers. Users can create and publish travel stories, guides, media, and tips, creating a visual, community-driven feed around travel.
+The Explore experience presents this content in a reel-style, scrollable feed with categories for stories, guides, media, and tips, allowing travelers to discover destinations and experiences through content created by the CoVoyage community.
+
+### 4. CoVoyage Essentials
+
+CoVoyage Essentials is the e-commerce side of CoVoyage, where travelers can discover travel-related products curated around different destinations and categories. Users can browse the product catalog, explore individual product details, and add products to their personal bag.
+The current implementation focuses on the shopping and product-discovery experience. Checkout, payment processing, order fulfillment, and inventory management are not currently implemented.
+
+## Event Data Model
+
+Authenticated users can create destination events through the platform. User-created events are automatically stored with `verification_status="needs-review"` and are not included in the public country event listing.
+
+Trusted events included in CoVoyage's seeded destination data are stored with `verification_status="verified"` and source metadata. The public country event endpoint filters for verified events only.
 
 Verified/source-recorded events can still appear in destination discovery where the backend filters for trusted event statuses.
 
@@ -105,15 +115,9 @@ The backend combines semantic similarity with structured profile overlap. The cu
 
 Matches below the configured minimum compatibility score are filtered out. Returned match data includes compatibility factors and explanation-oriented evidence so the UI can show why a traveler was recommended.
 
-## Gemini Local Vibe
+## AI Travel Assistant
 
-Local Vibe uses Gemini for destination-specific guidance through these backend routes:
-
-```text
-POST /assistant/local-vibe/chat
-POST /assistant/local-vibe/discovery-chat
-POST /assistant/local-vibe/itinerary
-```
+CoVoyage includes an AI travel assistant for destination-specific questions, discovery, and itinerary generation. Its backend exposes dedicated routes for conversational assistance, destination discovery, and itinerary generation:
 
 Prompts are grounded in CoVoyage destination context rather than open-ended generic chat. The itinerary flow validates the response shape and falls back to deterministic itinerary generation when Gemini is missing, rate-limited, unavailable, or returns malformed output.
 
@@ -121,15 +125,15 @@ Gemini does not power Tribe matching. Matching uses the embedding and compatibil
 
 ## Data And Demo Transparency
 
-CoVoyage includes a mix of live flows, seeded data, and static fallback content:
+CoVoyage combines database-backed application flows with seeded and static demonstration content.
 
-- Live MongoDB-backed flows: auth, profiles, chats, connections, Group Voyages, journals, community content, events, and saved Essentials bag data
-- Seeded demo data: traveler profiles, generated/open Group Voyages, and destination records
-- Static/fallback data: destination and Essentials content used to keep the prototype demonstrable
-- AI-generated content: Gemini Local Vibe responses when configured
-- Deterministic fallback content: Local Vibe responses when Gemini is unavailable
+- **Database-backed application flows:** authentication, profiles, connections, chats, Group Voyages, journals, community content, events, and saved Essentials bag data.
+- **Seeded demo data:** traveler profiles, Group Voyages, and destination records used to populate the application for demonstration.
+- **Static content:** some destination and Essentials catalog content is stored as static data to support the prototype experience.
+- **AI-generated content:** the AI Travel Assistant can generate destination guidance and itineraries through Gemini when configured.
+- **Deterministic fallback content:** the AI Travel Assistant can provide fallback responses when Gemini is unavailable.
 
-The Essentials feature is a planning catalog and saved bag experience. Checkout, payment processing, order fulfillment, and inventory management are not implemented.
+CoVoyage Essentials currently provides the product browsing and bag experience of the e-commerce flow. Checkout, payment processing, order fulfillment, and inventory management are not implemented.
 
 ## Project Structure
 
